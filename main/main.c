@@ -98,11 +98,13 @@ void motor_move(uint8_t dir, uint8_t speed)
 
 void motor_stop(void)
 {
-    gpio_set_level(AI1, 0);
-    gpio_set_level(AI2, 0);
+    gpio_set_level(AI1, 1);
+    gpio_set_level(AI2, 1);
 
-    gpio_set_level(BI1, 0);
-    gpio_set_level(BI2, 0);
+    gpio_set_level(BI1, 1);
+    gpio_set_level(BI2, 1);
+
+    vTaskDelay(50 / portTICK_PERIOD_MS);
 }
 
 void motor_rotate_in_place(uint8_t dir, uint8_t speed)
@@ -123,24 +125,24 @@ void app_main(void)
 
     while(1)
     {
-        // motor_move(DIR_FORWARD, 200);
-        // vTaskDelay(5000 / portTICK_PERIOD_MS);
-        // motor_stop();
-//
-        // motor_move(DIR_BACKWARD, 200);
-        // vTaskDelay(5000 / portTICK_PERIOD_MS);
-        // motor_stop();
-//
+        motor_move(DIR_FORWARD, 200);
+        vTaskDelay(5000 / portTICK_PERIOD_MS);
+        motor_stop();
+
+        motor_move(DIR_BACKWARD, 200);
+        vTaskDelay(5000 / portTICK_PERIOD_MS);
+        motor_stop();
+
         motor_rotate_in_place(DIR_LEFT, 200);
         vTaskDelay(5000 / portTICK_PERIOD_MS);
-        // motor_stop();
+        motor_stop();
 
-        // motor_rotate_in_place(DIR_RIGHT, 200);
-        // vTaskDelay(5000 / portTICK_PERIOD_MS);
-        // motor_stop();
+        motor_rotate_in_place(DIR_RIGHT, 200);
+        vTaskDelay(5000 / portTICK_PERIOD_MS);
+        motor_stop();
 
-        // motor_stop();
-        // vTaskDelay(5000 / portTICK_PERIOD_MS);
+        motor_stop();
+        vTaskDelay(5000 / portTICK_PERIOD_MS);
     }
 
 }
