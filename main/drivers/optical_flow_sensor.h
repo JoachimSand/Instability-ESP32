@@ -1,11 +1,14 @@
 #include "platform.h"
 #include "driver/spi_master.h"
 #include "driver/gpio.h"
-#include "portmacro.h"
+// #include "portmacro.h"
 
 // use the SPI2 controller for the optical flow sensor.
 // note that there is only one other SPI
 #define OPT_FLOW_HOST SPI2_HOST
+
+#define READ    0x00
+#define WRITE   0x80;
 
 static const char TAG[] = "OptFlowSensor";
 
