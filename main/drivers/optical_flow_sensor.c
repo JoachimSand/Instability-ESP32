@@ -21,14 +21,15 @@ void optical_flow_sensor_read_write_byte(spi_device_handle_t *spi_handle, u8 rw,
 
     esp_err_t err = spi_device_acquire_bus(*spi_handle, portMAX_DELAY);
     spi_transaction_t t;
+    memset(&t, 0, sizeof(t));
     t.flags = SPI_TRANS_USE_RXDATA;
-    // memset(&t, 0, sizeof(t));
     t.length = 16;
     t.cmd = addr;
     t.rxlength = 8;
     spi_device_polling_transmit(*spi_handle, &t);
 
     *read_to = *(u8*)t.rx_data;
+    ESP_LOGI(TAG, "Reading %u", *read_to);
 }
 
 void init_opt_flow_sensor(u8 PIN_MISO, u8 PIN_MOSI, u8 PIN_CLK, u8 PIN_CS)
