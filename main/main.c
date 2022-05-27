@@ -14,6 +14,7 @@
 #include <freertos/task.h>
 
 #include "esp_log.h"
+#include "rom/ets_sys.h"
 
 #include "platform.h"
 #include "drivers/motor_driver.h"
@@ -33,9 +34,9 @@ void app_main(void)
     while(1)
     {
         optical_flow_sensor_read_write_byte(&spi_handle, READ, DELTA_X, &delta_x);
-        vTaskDelay(1 / portTICK_PERIOD_MS);
+        ets_delay_us(1000);
         optical_flow_sensor_read_write_byte(&spi_handle, READ, DELTA_Y, &delta_y);
-        vTaskDelay(1 / portTICK_PERIOD_MS);
+        ets_delay_us(1000);
         optical_flow_sensor_read_write_byte(&spi_handle, READ, SQUAL, &squal);
 
         ESP_LOGI(TAG, "dx: %u  | dy: %u  | squal: %u" , delta_x, delta_y, squal);

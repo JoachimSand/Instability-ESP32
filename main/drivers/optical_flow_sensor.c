@@ -11,6 +11,8 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 
+#include "rom/ets_sys.h"
+
 
 void optical_flow_sensor_read_write_byte(spi_device_handle_t *spi_handle, u8 rw, u8 address, u8* read_to)
 {
@@ -30,7 +32,8 @@ void optical_flow_sensor_read_write_byte(spi_device_handle_t *spi_handle, u8 rw,
     t.tx_data[0] = addr;
     spi_device_polling_transmit(*spi_handle, &t);
 
-    vTaskDelay(1/ portTICK_PERIOD_MS);
+    // vTaskDelay(10);
+    ets_delay_us(100);
 
     memset(&t, 0, sizeof(t));
     t.flags =  SPI_TRANS_USE_RXDATA;
@@ -83,7 +86,7 @@ void init_opt_flow_sensor(spi_device_handle_t* spi_handle, u8 PIN_MISO, u8 PIN_M
         .command_bits = 0,
         .address_bits = 0,
         .dummy_bits = 0,
-        .clock_speed_hz = 3000000,
+        .clock_speed_hz = 1000000,
         .duty_cycle_pos = 128, // 50% duty cycle
         .mode = 3,
         .spics_io_num = PIN_CS,
