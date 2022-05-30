@@ -13,6 +13,26 @@
 
 #include "rom/ets_sys.h"
 
+void optical_flow_sensor_read(spi_device_handle_t* spi_handle, optical_flow_data_t* data)
+{
+    uint8_t delta_x_reg;
+    uint8_t delta_y_reg;
+    uint8_t squal_reg;
+    
+    optical_flow_sensor_read_write_byte(spi_handle, READ, MOTION, &delta_x_reg);
+    ets_delay_us(100);
+
+    optical_flow_sensor_read_write_byte(spi_handle, READ, DELTA_X, &delta_x_reg);
+    data->delta_x = *(int8_t*) &delta_x_reg;
+    ets_delay_us(100);
+
+    optical_flow_sensor_read_write_byte(spi_handle, READ, DELTA_Y, &delta_y_reg);
+    data->delta_y = *(int8_t*) &delta_y_reg;
+    ets_delay_us(100);
+
+    optical_flow_sensor_read_write_byte(spi_handle, READ, SQUAL, &squal_reg);
+    data->squal = squal_reg;
+}
 
 void optical_flow_sensor_read_write_byte(spi_device_handle_t *spi_handle, u8 rw, u8 address, u8* read_to)
 {
@@ -33,7 +53,7 @@ void optical_flow_sensor_read_write_byte(spi_device_handle_t *spi_handle, u8 rw,
     spi_device_polling_transmit(*spi_handle, &t);
 
     // vTaskDelay(10);
-    ets_delay_us(100);
+    ets_delay_us(75);
 
     memset(&t, 0, sizeof(t));
     t.flags =  SPI_TRANS_USE_RXDATA;

@@ -12,6 +12,7 @@
 // Include FreeRTOS for delay
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
+#include <sys/types.h>
 
 #include "esp_log.h"
 #include "rom/ets_sys.h"
@@ -26,21 +27,20 @@ void app_main(void)
 
     spi_device_handle_t spi_handle;
     init_opt_flow_sensor(&spi_handle, GPIO_NUM_12, GPIO_NUM_13, GPIO_NUM_14, GPIO_NUM_25, GPIO_NUM_26);
+    init_motor_drivers();
 
-    uint8_t delta_x;
-    uint8_t delta_y;
-    uint8_t squal;
+    optical_flow_data_t op_flow_data;
+
+    // motor_move(DIR_BACKWARD, 255);
+    // motor_rotate_in_place(DIR_RIGHT,  255);
+    motor_stop();
 
     while(1)
     {
-        optical_flow_sensor_read_write_byte(&spi_handle, READ, DELTA_X, &delta_x);
-        ets_delay_us(1000);
-        optical_flow_sensor_read_write_byte(&spi_handle, READ, DELTA_Y, &delta_y);
-        ets_delay_us(1000);
-        optical_flow_sensor_read_write_byte(&spi_handle, READ, SQUAL, &squal);
+        optical_flow_sensor_read(&spi_handle, &op_flow_data);
 
-        ESP_LOGI(TAG, "dx: %u  | dy: %u  | squal: %u" , delta_x, delta_y, squal);
-        vTaskDelay(1000/ portTICK_PERIOD_MS);
+        ESP_LOGI(TAG, "dx: %d  | dy: %d  | squal: %u" , op_flow_data.delta_x, op_flow_data.delta_y, op_flow_data.squal);
+        vTaskDelay(100/ portTICK_PERIOD_MS);
 
         // motor_move(DIR_FORWARD, 200);
         // vTaskDelay(5000 / portTICK_PERIOD_MS);
