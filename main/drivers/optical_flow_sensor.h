@@ -1,3 +1,6 @@
+#ifndef OPTICAL_FLOW_SENSOR_H
+#define OPTICAL_FLOW_SENSOR_H
+
 #include "platform.h"
 #include "driver/spi_master.h"
 #include "driver/gpio.h"
@@ -34,3 +37,5 @@ void optical_flow_sensor_read(spi_device_handle_t* spi_handle, optical_flow_data
 void init_opt_flow_sensor(spi_device_handle_t* spi_handle, u8 PIN_MISO, u8 PIN_MOSI, u8 PIN_CLK, u8 PIN_CS, u8 PIN_NRST);
 
 void optical_flow_sensor_read_write_byte(spi_device_handle_t *spi_handle, u8 rw, u8 address, u8* read_to);
+
+#endif

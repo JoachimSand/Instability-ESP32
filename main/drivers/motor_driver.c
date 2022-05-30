@@ -1,4 +1,6 @@
 #include "motor_driver.h"
+#include "driver/ledc.h"
+#include "hal/ledc_types.h"
 
 void init_gpio_motors(void)
 {
@@ -57,7 +59,7 @@ void init_motor_drivers(void)
     init_pwm_motors();
 }
 
-void motor_move(uint8_t dir, uint8_t speed)
+void motor_move(uint8_t dir, uint8_t speed, int16_t delta)
 {
     gpio_set_level(AI1, dir);
     gpio_set_level(AI2, !dir);
@@ -65,8 +67,13 @@ void motor_move(uint8_t dir, uint8_t speed)
     gpio_set_level(BI1, dir);
     gpio_set_level(BI2, !dir);
 
-    ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, speed);
-    ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_1, speed);
+    uint8_t speed_channel_0 = saturate_to_uint8((int16_t)speed - (int16_t) delta);
+    uint8_t speed_channel_1 = saturate_to_uint8((int16_t)speed + (int16_t) delta);
+
+    ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, speed_channel_0);
+    ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0);
+    ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_1, speed_channel_1);
+    ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_1);
 }
 
 void motor_stop(void)
@@ -90,4 +97,12 @@ void motor_rotate_in_place(uint8_t dir, uint8_t speed)
 
     ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, speed);
     ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_1, speed);
+}
+
+
+uint8_t saturate_to_uint8(int16_t val)
+{
+    if (val > 255)  return 255;
+    if (val < 0)    return 0;
+    return (uint8_t) val;
 }

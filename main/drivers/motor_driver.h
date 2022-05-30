@@ -34,10 +34,12 @@ void init_pwm_motors(void);
 
 void init_motor_drivers(void);
 
-void motor_move(uint8_t dir, uint8_t speed);
+void motor_move(uint8_t dir, uint8_t speed, int16_t delta);
 
 void motor_stop(void);
 
 void motor_rotate_in_place(uint8_t dir, uint8_t speed);
+
+uint8_t saturate_to_uint8(int16_t val);
 
 #endif

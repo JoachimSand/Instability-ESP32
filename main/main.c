@@ -20,6 +20,7 @@
 #include "platform.h"
 #include "drivers/motor_driver.h"
 #include "drivers/optical_flow_sensor.h"
+#include "drivers/control.h"
 
 void app_main(void)
 {
@@ -28,8 +29,13 @@ void app_main(void)
     spi_device_handle_t spi_handle;
     init_opt_flow_sensor(&spi_handle, GPIO_NUM_12, GPIO_NUM_13, GPIO_NUM_14, GPIO_NUM_25, GPIO_NUM_26);
     init_motor_drivers();
+    
+    rover_position_t pos;
 
-    optical_flow_data_t op_flow_data;
+    controller_t controller;
+    init_controller(1, 0, 0, 0.01, 0, &controller);
+
+    // optical_flow_data_t op_flow_data;
 
     // motor_move(DIR_BACKWARD, 255);
     // motor_rotate_in_place(DIR_RIGHT,  255);
@@ -37,10 +43,19 @@ void app_main(void)
 
     while(1)
     {
-        optical_flow_sensor_read(&spi_handle, &op_flow_data);
+        // update_rover_position(&spi_handle, &pos);
+        // ESP_LOGI(TAG, "x: %d  | y: %d" , pos.x, pos.y);
+        update_controller(&spi_handle, &controller);
+        motor_move(DIR_FORWARD, 180, controller.motor_delta);
+        
+        // ESP_LOGI(TAG, "x: %d  | y: %d" , controller.pos.x, controller.pos.y);
+        ESP_LOGI(TAG, "motor delta: %d" , controller.motor_delta);
 
-        ESP_LOGI(TAG, "dx: %d  | dy: %d  | squal: %u" , op_flow_data.delta_x, op_flow_data.delta_y, op_flow_data.squal);
-        vTaskDelay(100/ portTICK_PERIOD_MS);
+        // ESP_LOGI(TAG, "dx: %d  | dy %d  | squal: %u" , op_flow_data.delta_x, op_flow_data.delta_y, op_flow_data.squal);
+    
+
+
+        vTaskDelay(10/ portTICK_PERIOD_MS);
 
         // motor_move(DIR_FORWARD, 200);
         // vTaskDelay(5000 / portTICK_PERIOD_MS);
