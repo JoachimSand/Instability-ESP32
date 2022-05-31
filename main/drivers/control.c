@@ -2,7 +2,7 @@
 
 #include "esp_log.h"
 
-#define NSQUAL
+// #define NSQUAL
 
 void update_rover_position(spi_device_handle_t* hspi, rover_position_t *pos)
 {
@@ -21,16 +21,17 @@ void update_rover_position(spi_device_handle_t* hspi, rover_position_t *pos)
 
 void update_controller(spi_device_handle_t* hspi, controller_t* controller)
 {
-    update_rover_position(hspi, &(controller->pos));
+    // Don't update here to avoid double op flow read
+    // update_rover_position(hspi, &(controller->pos));
 
     int32_t error;
     if (controller->control_axis == AXIS_X)
     {
-        error = controller->setpoint - controller->pos.x;
+        error = controller->setpoint - controller->pos->x;
     }
     else
     {
-        error = controller->setpoint - controller->pos.y;
+        error = controller->setpoint - controller->pos->y;
     }
 
     controller->error_integral +=  error * controller->Ts;
@@ -44,7 +45,7 @@ void update_controller(spi_device_handle_t* hspi, controller_t* controller)
     controller->output = p + i + d;
 }
 
-void init_controller(float kp_, float ki_, float kd_, float Ts_, int32_t setpoint_, uint8_t control_axis_,  controller_t* controller)
+void init_controller(float kp_, float ki_, float kd_, float Ts_, int32_t setpoint_, uint8_t control_axis_, rover_position_t* pos_ , controller_t* controller)
 {
     controller->kp = kp_;
     controller->ki = ki_;
@@ -52,6 +53,11 @@ void init_controller(float kp_, float ki_, float kd_, float Ts_, int32_t setpoin
 
     controller->setpoint = setpoint_;
     controller->Ts = Ts_;
+
+    controller->pos = pos_;
+
+    // controller->pos.x = 0;
+    // controller->pos.y = 0;
 
     controller->control_axis = control_axis_;
 
