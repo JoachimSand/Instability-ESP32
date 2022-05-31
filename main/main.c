@@ -22,6 +22,8 @@
 #include "drivers/optical_flow_sensor.h"
 #include "drivers/control.h"
 
+#define MAX_FORWARD_VEL 180
+
 void app_main(void)
 {
     // init_motor_drivers();
@@ -32,8 +34,18 @@ void app_main(void)
     
     rover_position_t pos;
 
+    controller_t controller_sideways;
+    controller_t controller_forward;
     controller_t controller;
-    init_controller(1, 0, 0, 0.01, 0, &controller);
+
+    init_controller(2, 0, 0, 0.01, 0, AXIS_X, &controller_sideways);
+    init_controller(1, 0, 0, 0.01, 5000, AXIS_Y, &controller_forward);
+    
+    // init_controller(1, 0, 0, 0.01, 984, AXIS_ROTATE, &controller);
+
+    // TURNING
+    // init_controller(1, 0, 0, 0.01, 981, &controller);
+    // init_controller(1, 0, 0, 0.01, 1962, &controller);
 
     // optical_flow_data_t op_flow_data;
 
@@ -45,11 +57,16 @@ void app_main(void)
     {
         // update_rover_position(&spi_handle, &pos);
         // ESP_LOGI(TAG, "x: %d  | y: %d" , pos.x, pos.y);
-        update_controller(&spi_handle, &controller);
-        motor_move(DIR_FORWARD, 180, controller.motor_delta);
+        update_controller(&spi_handle, &controller_forward);
+        update_controller(&spi_handle, &controller_sideways);
+
+        // PID MOTOR CONTROL FORWARD
+        motor_move(DIR_FORWARD, saturate_uint8_to_val(controller_forward.output, MAX_FORWARD_VEL), controller_sideways.output);
         
+        // motor_rotate_in_place(DIR_LEFT, saturate_to_uint8(controller.output));
+
         // ESP_LOGI(TAG, "x: %d  | y: %d" , controller.pos.x, controller.pos.y);
-        ESP_LOGI(TAG, "motor delta: %d" , controller.motor_delta);
+        // ESP_LOGI(TAG, "controller output: %d | saturated uint8_t output: %d" , controller.output, saturate_to_uint8(controller.output));
 
         // ESP_LOGI(TAG, "dx: %d  | dy %d  | squal: %u" , op_flow_data.delta_x, op_flow_data.delta_y, op_flow_data.squal);
     

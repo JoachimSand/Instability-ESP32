@@ -23,20 +23,28 @@ void update_controller(spi_device_handle_t* hspi, controller_t* controller)
 {
     update_rover_position(hspi, &(controller->pos));
 
-    int32_t error_x = controller->setpoint - controller->pos.x;
+    int32_t error;
+    if (controller->control_axis == AXIS_X)
+    {
+        error = controller->setpoint - controller->pos.x;
+    }
+    else
+    {
+        error = controller->setpoint - controller->pos.y;
+    }
 
-    controller->error_integral_x +=  error_x * controller->Ts;
+    controller->error_integral +=  error * controller->Ts;
 
-    float p = controller->kp * error_x; 
+    float p = controller->kp * error; 
 
-    float i = controller->ki * controller->error_integral_x;
+    float i = controller->ki * controller->error_integral;
 
-    float d = controller->kd * (error_x - controller->prev_error_x) / controller->Ts;
+    float d = controller->kd * (error - controller->prev_error) / controller->Ts;
 
-    controller->motor_delta = p + i + d;
+    controller->output = p + i + d;
 }
 
-void init_controller(float kp_, float ki_, float kd_, float Ts_, int32_t setpoint_, controller_t* controller)
+void init_controller(float kp_, float ki_, float kd_, float Ts_, int32_t setpoint_, uint8_t control_axis_,  controller_t* controller)
 {
     controller->kp = kp_;
     controller->ki = ki_;
@@ -45,8 +53,10 @@ void init_controller(float kp_, float ki_, float kd_, float Ts_, int32_t setpoin
     controller->setpoint = setpoint_;
     controller->Ts = Ts_;
 
-    controller->error_integral_x = 0;
-    controller->prev_error_x = 0;
+    controller->control_axis = control_axis_;
+
+    controller->error_integral = 0;
+    controller->prev_error = 0;
     
-    controller->motor_delta = 0;
+    controller->output = 0;
 }

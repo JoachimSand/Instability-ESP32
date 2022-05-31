@@ -96,7 +96,9 @@ void motor_rotate_in_place(uint8_t dir, uint8_t speed)
     gpio_set_level(BI2, dir);
 
     ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, speed);
+    ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0);
     ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_1, speed);
+    ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_1);
 }
 
 
@@ -105,4 +107,11 @@ uint8_t saturate_to_uint8(int16_t val)
     if (val > 255)  return 255;
     if (val < 0)    return 0;
     return (uint8_t) val;
+}
+
+uint8_t saturate_uint8_to_val(int16_t input, uint8_t limit)
+{
+    if (input > limit)  return limit;
+    if (input < 0)    return 0;
+    return (uint8_t) input;
 }

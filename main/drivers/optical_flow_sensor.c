@@ -13,6 +13,8 @@
 
 #include "rom/ets_sys.h"
 
+// #define NOVERFLOW
+
 void optical_flow_sensor_read(spi_device_handle_t* spi_handle, optical_flow_data_t* data)
 {
     uint8_t delta_x_reg;
@@ -21,6 +23,13 @@ void optical_flow_sensor_read(spi_device_handle_t* spi_handle, optical_flow_data
     
     optical_flow_sensor_read_write_byte(spi_handle, READ, MOTION, &delta_x_reg);
     ets_delay_us(100);
+    
+#ifndef NOVERFLOW
+    if (delta_x_reg & (1 << 4))
+    {
+        ESP_LOGI(TAG, "OVERFLOW occured in optical flow sensor read...");
+    }
+#endif
 
     optical_flow_sensor_read_write_byte(spi_handle, READ, DELTA_X, &delta_x_reg);
     data->delta_x = *(int8_t*) &delta_x_reg;
