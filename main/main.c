@@ -20,31 +20,33 @@
 #include "platform.h"
 #include "drivers/motor_driver.h"
 #include "drivers/optical_flow_sensor.h"
+#include "drivers/backend_connect.h"
 
 void app_main(void)
 {
-    // init_motor_drivers();
+	// init_motor_drivers();
+	init_WIFI();
+	send_debug(NULL, 0);
 
-    spi_device_handle_t spi_handle;
-    init_opt_flow_sensor(&spi_handle, GPIO_NUM_12, GPIO_NUM_13, GPIO_NUM_14, GPIO_NUM_25, GPIO_NUM_26);
-    init_motor_drivers();
+	spi_device_handle_t spi_handle;
+	init_opt_flow_sensor(&spi_handle, GPIO_NUM_12, GPIO_NUM_13, GPIO_NUM_14, GPIO_NUM_25, GPIO_NUM_26);
+	init_motor_drivers();
 
-    optical_flow_data_t op_flow_data;
+	optical_flow_data_t op_flow_data;
 
-    // motor_move(DIR_BACKWARD, 255);
-    // motor_rotate_in_place(DIR_RIGHT,  255);
-    motor_stop();
+	// motor_move(DIR_BACKWARD, 255);
+	// motor_rotate_in_place(DIR_RIGHT,  255);
+	motor_stop();
 
-    while(1)
-    {
-        optical_flow_sensor_read(&spi_handle, &op_flow_data);
+	while (1)
+	{
+		optical_flow_sensor_read(&spi_handle, &op_flow_data);
 
-        ESP_LOGI(TAG, "dx: %d  | dy: %d  | squal: %u" , op_flow_data.delta_x, op_flow_data.delta_y, op_flow_data.squal);
-        vTaskDelay(100/ portTICK_PERIOD_MS);
+		ESP_LOGI(TAG, "dx: %d  | dy: %d  | squal: %u", op_flow_data.delta_x, op_flow_data.delta_y, op_flow_data.squal);
+		vTaskDelay(100 / portTICK_PERIOD_MS);
 
-        // motor_move(DIR_FORWARD, 200);
-        // vTaskDelay(5000 / portTICK_PERIOD_MS);
-        // motor_stop();
-    }
-
+		// motor_move(DIR_FORWARD, 200);
+		// vTaskDelay(5000 / portTICK_PERIOD_MS);
+		// motor_stop();
+	}
 }
