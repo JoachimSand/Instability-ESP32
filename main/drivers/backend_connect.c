@@ -174,6 +174,7 @@ error:
 		close(sock);
 	}
 	free(address_info);
+	free(data->payload);
 	vTaskDelete(NULL);
 }
 
@@ -284,12 +285,16 @@ void init_WIFI(void)
 	vEventGroupDelete(s_wifi_event_group);
 }
 
-void send_debug(const char *str, u32 len)
+// Send debug info to be printed on the backend. str is memcpyed,
+// so the callee can free the str immediately after calling this
+// function.
+void send_debug_backend(const char *str, u32 len)
 {
-	static tcp_task_data_t data =
-		{
-			.payload = "{\"currPos\": { \"id\": \"p1\",  \"position\": {\"x\": 250, \"y\": 25}}, \"nextPos\": {\"id\": \"p2\",\"position\": {\"x\": 100, \"y\": 125 }}}\r\n\r\n",
-			.len = 123,
-		};
+	static tcp_task_data_t data;
+	data.payload = malloc(sizeof(char) * (len + 2));
+	data.payload[0] = 'd';
+	data.payload[1] = ' ';
+	memcpy(&(data.payload[2]), str, len);
+	data.len = len;
 	xTaskCreate(tcp_client_task, "tcp_client", 4096, &data, 5, NULL);
 }

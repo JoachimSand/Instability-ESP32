@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <string.h>
 
 #include "driver/gpio.h"
 #include "driver/ledc.h"
@@ -27,7 +28,8 @@ void app_main(void)
 {
 	// init_motor_drivers();
 	init_WIFI();
-	send_debug(NULL, 0);
+	const char *str = "Challenger?";
+	send_debug_backend(str, strlen(str));
 
 	spi_device_handle_t spi_handle;
 	init_opt_flow_sensor(&spi_handle, GPIO_NUM_12, GPIO_NUM_13, GPIO_NUM_14, GPIO_NUM_25, GPIO_NUM_26);
@@ -66,5 +68,4 @@ void app_main(void)
 	// motor_move(DIR_FORWARD, 200);
 	// vTaskDelay(5000 / portTICK_PERIOD_MS);
 	// motor_stop();
-}
 }
