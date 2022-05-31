@@ -42,4 +42,6 @@ void motor_rotate_in_place(uint8_t dir, uint8_t speed);
 
 uint8_t saturate_to_uint8(int16_t val);
 
+uint8_t saturate_uint8_to_val(int16_t input, uint8_t limit);
+
 #endif
