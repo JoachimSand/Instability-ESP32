@@ -40,6 +40,11 @@ typedef struct controller
 #define AXIS_ROTATE 1
 #define AXIS_Y 0
 
+#define MAX_FORWARD_VEL 180
+#define FORWARD_CNT_PER_CM 47
+#define ROTATION_CNT_PER_DEGRES 47 //not correct
+
+
 void update_rover_position(spi_device_handle_t* hspi, rover_position_t* pos);
 
 void update_controller(spi_device_handle_t* hspi, controller_t* controller);

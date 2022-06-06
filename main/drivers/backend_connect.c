@@ -9,9 +9,11 @@
 #include "sys/socket.h"
 #include "freertos/event_groups.h"
 #include "freertos/task.h"
+#include <stdio.h>
 
 static const char TCP_SERVER_ADDRESS[] = "192.168.137.1";
-static const char TCP_SERVER_PORT[] = "12000";
+// static const char TCP_SERVER_PORT[] = "12000";
+static const char TCP_SERVER_PORT[] = "19006";
 static const char TAG_WIFI[] = "BackendConnection";
 #define WIFI_SSID "PROBOOK 3239"
 #define WIFI_PASS "9=8aE932"
@@ -295,6 +297,21 @@ void send_debug_backend(const char *str, u32 len)
 	data.payload[0] = 'd';
 	data.payload[1] = ' ';
 	memcpy(&(data.payload[2]), str, len);
-	data.len = len;
+	data.len = len + 2;
 	xTaskCreate(tcp_client_task, "tcp_client", 4096, &data, 5, NULL);
+}
+
+// TODO: consider null terminations
+
+void send_live_position(rover_position_t* pos)
+{
+    static tcp_task_data_t data;
+	data.payload = malloc(sizeof(char) * LIVE_POS_STRING_MAX_LEN + 2);
+	data.payload[0] = 'l';
+	data.payload[1] = ' ';
+    snprintf(&(data.payload[2]), LIVE_POS_STRING_MAX_LEN, "{\"position\": {\"x\": %d,\"y\": %d}}", pos->x, pos->y);
+	// memcpy(&(data.payload[2]), str, len);
+	data.len = strlen(data.payload);
+	xTaskCreate(tcp_client_task, "tcp_client", 4096, &data, 5, NULL);
+
 }
