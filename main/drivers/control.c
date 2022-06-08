@@ -12,6 +12,7 @@ void update_rover_position(spi_device_handle_t *hspi, rover_position_t *pos)
 	// TODO: add check for squal > SQUAL_THRESHOLD
 	pos->x += (int32_t)op_flow_data.delta_x;
 	pos->y += (int32_t)op_flow_data.delta_y;
+    pos->squal = op_flow_data.squal;
 
 #ifndef NSQUAL
 	ESP_LOGI(TAG, "squal : %d", op_flow_data.squal);

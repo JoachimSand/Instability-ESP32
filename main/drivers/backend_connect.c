@@ -12,8 +12,8 @@
 #include <stdio.h>
 
 static const char TCP_SERVER_ADDRESS[] = "192.168.137.1";
-// static const char TCP_SERVER_PORT[] = "12000";
-static const char TCP_SERVER_PORT[] = "19006";
+static const char TCP_SERVER_PORT[] = "12000";
+// static const char TCP_SERVER_PORT[] = "19006";
 static const char TAG_WIFI[] = "BackendConnection";
 #define WIFI_SSID "PROBOOK 3239"
 #define WIFI_PASS "9=8aE932"
@@ -306,12 +306,32 @@ void send_debug_backend(const char *str, u32 len)
 void send_live_position(rover_position_t* pos)
 {
     static tcp_task_data_t data;
-	data.payload = malloc(sizeof(char) * LIVE_POS_STRING_MAX_LEN + 2);
+	data.payload = malloc(sizeof(char) * (LIVE_POS_STRING_MAX_LEN + 2));
 	data.payload[0] = 'l';
 	data.payload[1] = ' ';
-    snprintf(&(data.payload[2]), LIVE_POS_STRING_MAX_LEN, "{\"position\": {\"x\": %d,\"y\": %d}}", pos->x, pos->y);
+    snprintf(&(data.payload[2]), LIVE_POS_STRING_MAX_LEN, "{\"position\": {\"x\": %d,\"y\": %d}} | {\"squal\": %u}", pos->x, pos->y, pos->squal);
 	// memcpy(&(data.payload[2]), str, len);
 	data.len = strlen(data.payload);
 	xTaskCreate(tcp_client_task, "tcp_client", 4096, &data, 5, NULL);
+}
 
+void send_alien_position(rover_position_t* pos)
+{
+    static tcp_task_data_t data;
+	data.payload = malloc(sizeof(char) * (LIVE_POS_STRING_MAX_LEN + 2));
+	data.payload[0] = 'a';
+	data.payload[1] = ' ';
+    snprintf(&(data.payload[2]), LIVE_POS_STRING_MAX_LEN, "{\"position\": {\"x\": %d,\"y\": %d}} ", pos->x, pos->y);
+	// memcpy(&(data.payload[2]), str, len);
+	data.len = strlen(data.payload);
+	xTaskCreate(tcp_client_task, "tcp_client", 4096, &data, 5, NULL);
+}
+
+void send_path(rover_position_t* start_pos, rover_position_t* end_pos)
+{
+    static tcp_task_data_t data;
+	data.payload = malloc(sizeof(char) * PATH_STRING_MAX_LEN);
+    snprintf(data.payload, PATH_STRING_MAX_LEN, "{\"start\": {\"position\": {\"x\": %d,\"y\": %d}},\"end\": {\"position\": {\"x\": %d,\"y\": %d}}}", start_pos->x, start_pos->y, end_pos->x, end_pos->y);
+	data.len = strlen(data.payload);
+	xTaskCreate(tcp_client_task, "tcp_client", 4096, &data, 5, NULL);
 }

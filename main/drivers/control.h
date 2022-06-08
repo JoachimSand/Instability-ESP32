@@ -9,6 +9,7 @@ typedef struct rover_position
 {
     int32_t x;
     int32_t y;
+    uint8_t squal;
 } rover_position_t;
 
 typedef struct controller
@@ -40,7 +41,7 @@ typedef struct controller
 #define AXIS_ROTATE 1
 #define AXIS_Y 0
 
-#define MAX_FORWARD_VEL 180
+#define MAX_FORWARD_VEL 150
 #define FORWARD_CNT_PER_CM 47
 #define ROTATION_CNT_PER_DEGRES 47 //not correct
 
