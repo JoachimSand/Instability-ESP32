@@ -18,7 +18,7 @@ void init_WIFI(void);
 
 void send_debug_backend(const char *str, u32 len);
 
-void send_live_position(rover_position_t* pos);
+void send_live_update(rover_position_t* pos, uint8_t motor_speed_left, uint8_t motor_speed_right);
 
 void send_alien_position(rover_position_t* pos);
 
