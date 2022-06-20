@@ -14,13 +14,25 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 
-#define PWM_A   GPIO_NUM_5
-#define AI1     GPIO_NUM_19
-#define AI2     GPIO_NUM_18
+// NOTE(jsand): Pin settings before moving to make space for SPI
+/*
+#define PWM_A   GPIO_NUM_5      - IO7
+#define AI1     GPIO_NUM_19     - IO5
+#define AI2     GPIO_NUM_18     - IO6
 
-#define PWM_B   GPIO_NUM_23
+#define PWM_B   GPIO_NUM_23     - IO2
 #define BI1     GPIO_NUM_21
 #define BI2     GPIO_NUM_22
+*/
+
+// Note(jsand): After moving pins to make space for SPI
+#define PWM_A GPIO_NUM_2 // IO13
+#define AI1 GPIO_NUM_4	 // IO11
+#define AI2 GPIO_NUM_15	 // IO12
+
+#define PWM_B GPIO_NUM_33 // A3
+#define BI1 GPIO_NUM_21
+#define BI2 GPIO_NUM_22
 
 #define DIR_FORWARD 1
 #define DIR_BACKWARD 0

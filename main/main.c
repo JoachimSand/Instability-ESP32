@@ -23,9 +23,19 @@
 #include "platform.h"
 #include "drivers/motor_driver.h"
 #include "drivers/optical_flow_sensor.h"
+#include "drivers/fpga_connect.h"
 #include "drivers/backend_connect.h"
 #include "drivers/control.h"
 
+void app_main(void)
+{
+	// WIFI stuffs
+	// init_WIFI();
+	spi_device_handle_t spi_handle;
+	init_fpga_connection(&spi_handle);
+}
+
+/*
 void app_main(void)
 {
 	// WIFI stuffs
@@ -52,6 +62,7 @@ void app_main(void)
 
 	// init_controller(5, 0, 0, 0.01, 1960, AXIS_ROTATE, &rover_pos, &controller);
 	//
+
 
 	while (1)
 	{
@@ -105,4 +116,6 @@ void app_main(void)
 		// }
 		// vTaskDelay(500 / portTICK_PERIOD_MS);
 	}
+
 }
+*/
