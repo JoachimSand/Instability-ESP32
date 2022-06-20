@@ -35,6 +35,12 @@ static const char TAG_WIFI[] = "BackendConnection";
 #define WIFI_CONNECTED_BIT BIT0
 #define WIFI_FAIL_BIT BIT1
 
+// TCP Server Definitions
+#define PORT 80
+#define KEEPALIVE_IDLE 10
+#define KEEPALIVE_INTERVAL 10
+#define KEEPALIVE_COUNT 50
+
 /* FreeRTOS event group to signal when we are connected & ready to make a request */
 static EventGroupHandle_t s_wifi_event_group;
 static i32 s_retry_num = 0;
@@ -180,6 +186,131 @@ error:
 	vTaskDelete(NULL);
 }
 
+static void server_recieve(const int sock)
+{
+	int len;
+	char rx_buffer[128];
+
+	do
+	{
+		len = recv(sock, rx_buffer, sizeof(rx_buffer) - 1, 0);
+		if (len < 0)
+		{
+			ESP_LOGE(TAG, "Error occurred during receiving: errno %d", errno);
+		}
+		else if (len == 0)
+		{
+			ESP_LOGW(TAG, "Connection closed");
+		}
+		else
+		{
+			rx_buffer[len] = 0; // Null-terminate whatever is received and treat it like a string
+			ESP_LOGI(TAG, "Received %d bytes: %s", len, rx_buffer);
+
+			// TODO: Here we can add reactions to recieved messages.
+
+			// Transmit back whatever the backend sent us
+			// send() can return less bytes than supplied length.
+			// Walk-around for robust implementation.
+			int to_write = len;
+			while (to_write > 0)
+			{
+				int written = send(sock, rx_buffer + (len - to_write), to_write, 0);
+				if (written < 0)
+				{
+					ESP_LOGE(TAG, "Error occurred during sending: errno %d", errno);
+				}
+				to_write -= written;
+			}
+		}
+	} while (len > 0);
+}
+
+static void tcp_server_task(void *pvParameters)
+{
+	char addr_str[128];
+	int addr_family = (int)pvParameters;
+	int ip_protocol = 0;
+	int keepAlive = 1;
+	int keepIdle = KEEPALIVE_IDLE;
+	int keepInterval = KEEPALIVE_INTERVAL;
+	int keepCount = KEEPALIVE_COUNT;
+	struct sockaddr_storage dest_addr;
+
+	if (addr_family == AF_INET)
+	{
+		struct sockaddr_in *dest_addr_ip4 = (struct sockaddr_in *)&dest_addr;
+		dest_addr_ip4->sin_addr.s_addr = htonl(INADDR_ANY);
+		dest_addr_ip4->sin_family = AF_INET;
+		dest_addr_ip4->sin_port = htons(PORT);
+		ip_protocol = IPPROTO_IP;
+	}
+
+	int listen_sock = socket(addr_family, SOCK_STREAM, ip_protocol);
+	if (listen_sock < 0)
+	{
+		ESP_LOGE(TAG, "Unable to create socket: errno %d", errno);
+		vTaskDelete(NULL);
+		return;
+	}
+	int opt = 1;
+	setsockopt(listen_sock, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
+
+	ESP_LOGI(TAG, "Socket created");
+
+	int err = bind(listen_sock, (struct sockaddr *)&dest_addr, sizeof(dest_addr));
+	if (err != 0)
+	{
+		ESP_LOGE(TAG, "Socket unable to bind: errno %d", errno);
+		ESP_LOGE(TAG, "IPPROTO: %d", addr_family);
+		goto CLEAN_UP;
+	}
+	ESP_LOGI(TAG, "Socket bound, port %d", PORT);
+
+	err = listen(listen_sock, 1);
+	if (err != 0)
+	{
+		ESP_LOGE(TAG, "Error occurred during listen: errno %d", errno);
+		goto CLEAN_UP;
+	}
+
+	while (1)
+	{
+
+		ESP_LOGI(TAG, "Socket listening");
+
+		struct sockaddr_storage source_addr; // Large enough for both IPv4 or IPv6
+		socklen_t addr_len = sizeof(source_addr);
+		int sock = accept(listen_sock, (struct sockaddr *)&source_addr, &addr_len);
+		if (sock < 0)
+		{
+			ESP_LOGE(TAG, "Unable to accept connection: errno %d", errno);
+			break;
+		}
+
+		// Set tcp keepalive option
+		setsockopt(sock, SOL_SOCKET, SO_KEEPALIVE, &keepAlive, sizeof(int));
+		setsockopt(sock, IPPROTO_TCP, TCP_KEEPIDLE, &keepIdle, sizeof(int));
+		setsockopt(sock, IPPROTO_TCP, TCP_KEEPINTVL, &keepInterval, sizeof(int));
+		setsockopt(sock, IPPROTO_TCP, TCP_KEEPCNT, &keepCount, sizeof(int));
+		// Convert ip address to string
+		if (source_addr.ss_family == PF_INET)
+		{
+			inet_ntoa_r(((struct sockaddr_in *)&source_addr)->sin_addr, addr_str, sizeof(addr_str) - 1);
+		}
+		ESP_LOGI(TAG, "Socket accepted ip address: %s", addr_str);
+
+		server_recieve(sock);
+
+		shutdown(sock, 0);
+		close(sock);
+	}
+
+CLEAN_UP:
+	close(listen_sock);
+	vTaskDelete(NULL);
+}
+
 static void event_handler(void *arg, esp_event_base_t event_base,
 						  int32_t event_id, void *event_data)
 {
@@ -285,6 +416,8 @@ void init_WIFI(void)
 	ESP_ERROR_CHECK(esp_event_handler_instance_unregister(IP_EVENT, IP_EVENT_STA_GOT_IP, instance_got_ip));
 	ESP_ERROR_CHECK(esp_event_handler_instance_unregister(WIFI_EVENT, ESP_EVENT_ANY_ID, instance_any_id));
 	vEventGroupDelete(s_wifi_event_group);
+
+	xTaskCreate(tcp_server_task, "tcp_server", 4096, (void *)AF_INET, 5, NULL);
 }
 
 // Send debug info to be printed on the backend. str is memcpyed,
@@ -305,7 +438,7 @@ void send_debug_backend(const char *str, u32 len)
 
 void send_live_update(rover_position_t* pos, uint8_t motor_speed_left, uint8_t motor_speed_right)
 {
-    static tcp_task_data_t data;
+	static tcp_task_data_t data;
 	data.payload = malloc(sizeof(char) * (LIVE_POS_STRING_MAX_LEN + 2));
 	data.payload[0] = 'l';
 	data.payload[1] = ' ';
@@ -319,23 +452,23 @@ void send_live_update(rover_position_t* pos, uint8_t motor_speed_left, uint8_t m
 	xTaskCreate(tcp_client_task, "tcp_client", 4096, &data, 5, NULL);
 }
 
-void send_alien_position(rover_position_t* pos)
+void send_alien_position(rover_position_t *pos)
 {
-    static tcp_task_data_t data;
+	static tcp_task_data_t data;
 	data.payload = malloc(sizeof(char) * (LIVE_POS_STRING_MAX_LEN + 2));
 	data.payload[0] = 'a';
 	data.payload[1] = ' ';
-    snprintf(&(data.payload[2]), LIVE_POS_STRING_MAX_LEN, "{\"position\": {\"x\": %d,\"y\": %d}} ", pos->x, pos->y);
+	snprintf(&(data.payload[2]), LIVE_POS_STRING_MAX_LEN, "{\"position\": {\"x\": %d,\"y\": %d}} ", pos->x, pos->y);
 	// memcpy(&(data.payload[2]), str, len);
 	data.len = strlen(data.payload);
 	xTaskCreate(tcp_client_task, "tcp_client", 4096, &data, 5, NULL);
 }
 
-void send_path(rover_position_t* start_pos, rover_position_t* end_pos)
+void send_path(rover_position_t *start_pos, rover_position_t *end_pos)
 {
-    static tcp_task_data_t data;
+	static tcp_task_data_t data;
 	data.payload = malloc(sizeof(char) * PATH_STRING_MAX_LEN);
-    snprintf(data.payload, PATH_STRING_MAX_LEN, "{\"start\": {\"position\": {\"x\": %d,\"y\": %d}},\"end\": {\"position\": {\"x\": %d,\"y\": %d}}}", start_pos->x, start_pos->y, end_pos->x, end_pos->y);
+	snprintf(data.payload, PATH_STRING_MAX_LEN, "{\"start\": {\"position\": {\"x\": %d,\"y\": %d}},\"end\": {\"position\": {\"x\": %d,\"y\": %d}}}", start_pos->x, start_pos->y, end_pos->x, end_pos->y);
 	data.len = strlen(data.payload);
 	xTaskCreate(tcp_client_task, "tcp_client", 4096, &data, 5, NULL);
 }
