@@ -6,6 +6,7 @@
 #include "esp_err.h"
 #include "esp_log.h"
 #include "freertos/portmacro.h"
+#include "../platform.h"
 
 // Include FreeRTOS for delay
 #include <freertos/FreeRTOS.h>
@@ -14,6 +15,153 @@
 #include "rom/ets_sys.h"
 
 // #define NOVERFLOW
+
+void get_vision_data(spi_device_handle_t *spi_handle)
+{
+	esp_err_t err = spi_device_acquire_bus(*spi_handle, portMAX_DELAY);
+	if (err != ESP_OK)
+	{
+		ESP_LOGE(FPGA_TAG, "Failed to acquire SPI bus!!");
+		return;
+	}
+
+	u16 col_positions[32];
+	u32 col_index = 0;
+	u32 col_count = 0;
+
+	u32 readings_count = 0;
+
+	u8 ready_to_trans_count = 0;
+
+	bb_collection_t bounding_box_collection = {0};
+
+	while (ready_to_trans_count < 2)
+	{
+		spi_transaction_t t;
+		memset(&t, 0, sizeof(t));
+		t.flags = SPI_TRANS_USE_RXDATA;
+		t.length = 0;
+		t.rxlength = 32;
+
+		spi_device_polling_transmit(*spi_handle, &t);
+
+		// mask away state bits
+		u32 left = (t.rx_data[0] << 8 | t.rx_data[1]) & 0x0FFF;
+		u32 right = t.rx_data[2] << 8 | t.rx_data[3];
+		u32 raw_data = (t.rx_data[0] << 24) | (t.rx_data[1] << 16) | (t.rx_data[2] << 8) | t.rx_data[3];
+
+		spi_state_t state = (spi_state_t)(t.rx_data[0] >> 4);
+
+		// ESP_LOGI(FPGA_TAG, "SPI STATE: %u \t%x", state, raw_data);
+
+		switch (state)
+		{
+		case SPI_READY_TO_TRANS:
+		{
+			ready_to_trans_count++;
+		}
+		break;
+
+		case SPI_TRANSMIT_COLS:
+		{
+			for (i32 i = 0; i < 28; i++)
+			{
+				if (raw_data & (0b1 << i))
+				{
+					col_positions[col_count] = col_index + i;
+					col_count++;
+				}
+			}
+			col_index += 28;
+		}
+		break;
+
+		case SPI_RED_BB:
+		{
+			bounding_box_collection.red.left = left;
+			bounding_box_collection.red.right = right;
+		}
+		break;
+
+		case SPI_BLUE_BB:
+		{
+			bounding_box_collection.blue.left = left;
+			bounding_box_collection.blue.right = right;
+		}
+		break;
+
+		case SPI_PINK_BB:
+		{
+			bounding_box_collection.pink.left = left;
+			bounding_box_collection.pink.right = right;
+		}
+		break;
+
+		case SPI_YELLOW_BB:
+		{
+			bounding_box_collection.yellow.left = left;
+			bounding_box_collection.yellow.right = right;
+		}
+		break;
+
+		case SPI_TEAL_BB:
+		{
+			bounding_box_collection.teal.left = left;
+			bounding_box_collection.teal.right = right;
+		}
+		break;
+
+		case SPI_GREEN_BB:
+		{
+			bounding_box_collection.green.left = left;
+			bounding_box_collection.green.right = right;
+		}
+		break;
+
+		default:
+		{
+		}
+		break;
+		}
+
+		// Intermittently perform vtaskdelay(1) to avoid blocking.
+		readings_count++;
+		if (readings_count % 1000)
+		{
+
+			vTaskDelay(1);
+		}
+
+		if (readings_count >= 10000)
+		{
+			ESP_LOGI(FPGA_TAG, "WARNING: Could not get vision data - FPGA not responding.");
+			break;
+		}
+	}
+	for (i32 i = 0; i < col_count; i++)
+	{
+		ESP_LOGI(FPGA_TAG, "Collumn at %u", col_positions[i]);
+	}
+
+	// ESP_LOGI(FPGA_TAG, "Red BB: (%u, %u)", bounding_box_collection.red.left, bounding_box_collection.red.right);
+	// ESP_LOGI(FPGA_TAG, "blue BB: (%u, %u)", bounding_box_collection.blue.left, bounding_box_collection.blue.right);
+	// ESP_LOGI(FPGA_TAG, "green BB: (%u, %u)", bounding_box_collection.green.left, bounding_box_collection.green.right);
+	// ESP_LOGI(FPGA_TAG, "teal BB: (%u, %u)", bounding_box_collection.teal.left, bounding_box_collection.teal.right);
+	// ESP_LOGI(FPGA_TAG, "pink BB: (%u, %u)", bounding_box_collection.pink.left, bounding_box_collection.pink.right);
+	// ESP_LOGI(FPGA_TAG, "yellow BB: (%u, %u)", bounding_box_collection.yellow.left, bounding_box_collection.yellow.right);
+
+	for (i32 i = 0; i < 6; i++)
+	{
+		i32 width = abs(bounding_box_collection.bb_list[i].left - bounding_box_collection.bb_list[i].right);
+
+		if (width < 400 && width > 20)
+		{
+			ESP_LOGI(FPGA_TAG, "BB%i: (%u, %u),  W: %i", i, bounding_box_collection.bb_list[i].left, bounding_box_collection.bb_list[i].right, width);
+		}
+	}
+
+	spi_device_release_bus(*spi_handle);
+}
 
 void init_fpga_connection(spi_device_handle_t *spi_handle)
 {
@@ -75,6 +223,13 @@ void init_fpga_connection(spi_device_handle_t *spi_handle)
 
 	u32 count = 0;
 
+	spi_state_t state = SPI_IDLE;
+
+	u16 col_positions[32];
+	u32 col_index = 0;
+	u32 col_count = 0;
+
+	/*
 	while (1)
 	{
 
@@ -88,18 +243,109 @@ void init_fpga_connection(spi_device_handle_t *spi_handle)
 		t.rxlength = 32;
 		spi_device_polling_transmit(*spi_handle, &t);
 
-		u32 x = t.rx_data[0] << 8 | t.rx_data[1];
+		// mask away state bits
+		u32 x = (t.rx_data[0] << 8 | t.rx_data[1]) & 0x0FFF;
 		u32 y = t.rx_data[2] << 8 | t.rx_data[3];
-		// ESP_LOGI(FPGA_TAG, "SPI DATA: (%u, %u)", x, y);
-		//  u8 *read_to;
-		//  *read_to = *(u8 *)t.rx_data;
-		count++;
-		if (count >= 307200)
+		u32 raw_data = (t.rx_data[0] << 24) | (t.rx_data[1] << 16) | (t.rx_data[2] << 8) | t.rx_data[3];
+
+		spi_state_t state_of_msg = (spi_state_t)(t.rx_data[0] >> 4);
+		state = state_of_msg;
+
+		ESP_LOGI(FPGA_TAG, "SPI STATE: %u \t%x", state_of_msg, raw_data);
+
+		switch (state)
 		{
+		case SPI_READY_TO_TRANS:
+		{
+			// Reset columns
+			col_count = 0;
+			col_index = 0;
+		}
+		break;
+
+		case SPI_TRANSMIT_COLS:
+		{
+			for (i32 i = 0; i < 28; i++)
+			{
+				if (raw_data & (0b1 << i))
+				{
+					col_positions[col_count] = col_index + i;
+					col_count++;
+				}
+			}
+			col_index += 28;
+
+			if (col_index >= 640)
+			{
+				for (i32 i = 0; i < col_count; i++)
+				{
+					ESP_LOGI(FPGA_TAG, "Collumn at %u", col_positions[i]);
+				}
+				col_count = 0;
+				col_index = 0;
+			}
+		}
+		break;
+
+		case SPI_RED_BB:
+		{
+			ESP_LOGI(FPGA_TAG, "Red BB: (%u, %u)", x, y);
+		}
+		break;
+
+		case SPI_BLUE_BB:
+		{
+			ESP_LOGI(FPGA_TAG, "Blue BB: (%u, %u)", x, y);
+		}
+		break;
+
+		case SPI_PINK_BB:
+		{
+			ESP_LOGI(FPGA_TAG, "Pink BB: (%u, %u)", x, y);
+		}
+		break;
+
+		case SPI_YELLOW_BB:
+		{
+			ESP_LOGI(FPGA_TAG, "Pink BB: (%u, %u)", x, y);
+		}
+		break;
+
+		case SPI_TEAL_BB:
+		{
+			ESP_LOGI(FPGA_TAG, "Teal BB: (%u, %u)", x, y);
+		}
+		break;
+
+		case SPI_GREEN_BB:
+		{
+			ESP_LOGI(FPGA_TAG, "Green BB: (%u, %u)", x, y);
+		}
+		break;
+
+		default:
+		{
+		}
+		break;
+		}
+
+		//
+
+		//   u8 *read_to;
+		//   *read_to = *(u8 *)t.rx_data;
+		count++;
+		if (count >= 10000)
+		{
+
 			vTaskDelay(1);
 			count = 0;
-			ESP_LOGI(FPGA_TAG, "SPI DATA: (%u, %u)", x, y);
+		}
+
+		if (t.rx_data[0] != 0xCC)
+		{
+			// ESP_LOGI(FPGA_TAG, "NON IDLE: (%x)", raw_data);
 		}
 	}
+	*/
 	spi_device_release_bus(*spi_handle);
 }

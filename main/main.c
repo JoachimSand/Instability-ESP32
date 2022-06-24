@@ -33,6 +33,10 @@ void app_main(void)
 	// init_WIFI();
 	spi_device_handle_t spi_handle;
 	init_fpga_connection(&spi_handle);
+	while (1)
+	{
+		get_vision_data(&spi_handle);
+	}
 }
 
 /*
