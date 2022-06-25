@@ -22,15 +22,15 @@ void get_vision_data(spi_device_handle_t *spi_handle, alien_collection_t *aliens
 	esp_err_t err = spi_device_acquire_bus(*spi_handle, portMAX_DELAY);
 	if (err != ESP_OK)
 	{
-		ESP_LOGE(FPGA_TAG, "Failed to acquire SPI bus!!");
+		ESP_LOGE(FPGA_TAG, "Failed to acquire SPI bus!");
 		return;
 	}
 
-	u16 col_positions[32];
-	u32 col_index = 0;
-	u32 col_count = 0;
+	u16 col_positions[MAX_COLS];
+	i32 col_index = 0;
+	i32 col_count = 0;
 
-	u32 readings_count = 0;
+	i32 readings_count = 0;
 
 	u8 ready_to_trans_count = 0;
 
@@ -65,14 +65,20 @@ void get_vision_data(spi_device_handle_t *spi_handle, alien_collection_t *aliens
 		case SPI_READY_TO_TRANS:
 		{
 			ready_to_trans_count++;
+			if (ready_to_trans_count < 2)
+			{
+				col_index = 0;
+				col_count = 0;
+			}
 		}
 		break;
 
 		case SPI_TRANSMIT_COLS:
 		{
+			// ESP_LOGI(FPGA_TAG, "%x", raw_data);
 			for (i32 i = 0; i < 28; i++)
 			{
-				if (raw_data & (0b1 << i))
+				if (raw_data & (0b1 << i) && col_count < MAX_COLS)
 				{
 					col_positions[col_count] = col_index + i;
 					col_count++;
@@ -144,9 +150,80 @@ void get_vision_data(spi_device_handle_t *spi_handle, alien_collection_t *aliens
 			break;
 		}
 	}
+
 	for (i32 i = 0; i < col_count; i++)
 	{
-		ESP_LOGI(FPGA_TAG, "Collumn at %u", col_positions[i]);
+		// ESP_LOGI(FPGA_TAG, "Collumn at %u", col_positions[i]);
+	}
+
+	i32 col_distances[MAX_COL_DISTANCES];
+	// ESP_LOGI(FPGA_TAG, "Col_count %i", col_count);
+
+	for (i32 j = 0; j < col_count - 1; j++)
+	{
+		col_distances[j] = col_positions[j + 1] - col_positions[j];
+		ESP_LOGI(FPGA_TAG, "ColDistance%i %i", j, col_distances[j]);
+	}
+
+	i32 col_derivates[MAX_COL_DERIVATES];
+	for (i32 c = 0; c < col_count - 2; c++)
+	{
+		col_derivates[c] = col_distances[c + 1] - col_distances[c];
+		// ESP_LOGI(FPGA_TAG, "ColDerivative%i %i", c, col_derivates[c]);
+	}
+
+	i32 prev_col_derivative = col_derivates[0];
+	i32 gaps[5];
+	i32 gap_count = 0;
+	for (i32 c = 1; c < col_count - 2; c++)
+	{
+		if (gap_count >= 5)
+		{
+			break;
+		}
+		if (prev_col_derivative > 50 && col_derivates[c] < -50)
+		{
+			// ESP_LOGI(FPGA_TAG, "Gap between cols (%i, %i)", c, c + 1);
+			gaps[gap_count] = c;
+			gap_count++;
+		}
+		prev_col_derivative = col_derivates[c];
+	}
+
+	i32 start_bound = 0;
+	bounding_box_t obstacle_bbs[5];
+	i32 obstacle_count = 0;
+
+	for (i32 g = 0; g <= gap_count; g++)
+	{
+		if (obstacle_count >= 5)
+		{
+			break;
+		}
+		i32 end_bound = gaps[g];
+
+		if (g >= gap_count)
+		{
+			end_bound = col_count - 1;
+		}
+
+		ESP_LOGI(FPGA_TAG, "Obstacle between (%i %i)", start_bound, end_bound);
+
+		obstacle_bbs[obstacle_count].left = start_bound;
+		obstacle_bbs[obstacle_count].right = end_bound;
+
+		obstacle_count++;
+		start_bound = gaps[g] + 1;
+	}
+
+	for (i32 o = 0; o < obstacle_count; o++)
+	{
+		i32 max_col_dist;
+		ESP_LOGI(FPGA_TAG, "NEW OBJECT");
+		for (i32 c = obstacle_bbs[o].left; c < obstacle_bbs[o].right; c++)
+		{
+			ESP_LOGI(FPGA_TAG, "%i", col_distances[c]);
+		}
 	}
 
 	// ESP_LOGI(FPGA_TAG, "Red BB: (%u, %u)", bb_collect[head].red.left, bb_collect[head].red.right);
@@ -199,7 +276,7 @@ void get_vision_data(spi_device_handle_t *spi_handle, alien_collection_t *aliens
 		aliens->location_list[i].x = x;
 		aliens->location_list[i].y = distance;
 
-		ESP_LOGI(FPGA_TAG, "BB%i: (%u, %u),  W: %i A: %f, X: %f D: %f", i, averaged_boxes.bb_list[i].left, averaged_boxes.bb_list[i].right, width, angle, x, distance);
+		// ESP_LOGI(FPGA_TAG, "BB%i: (%u, %u),  W: %i A: %f, X: %f D: %f", i, averaged_boxes.bb_list[i].left, averaged_boxes.bb_list[i].right, width, angle, x, distance);
 	}
 
 	spi_device_release_bus(*spi_handle);

@@ -20,6 +20,10 @@ static const char FPGA_TAG[] = "FpgaConnection";
 
 #define M_PI 3.14159265359
 #define NO_TAPS_AVERAGING 5
+#define MAX_COLS 32
+#define MAX_COL_DISTANCES MAX_COLS - 1
+#define MAX_COL_DERIVATES MAX_COLS - 2
+#define MAX_COL_SECOND_DERIVATES MAX_COLS - 3
 
 typedef enum spi_state
 {
@@ -41,6 +45,8 @@ typedef struct bounding_box
 
 typedef struct alien_location
 {
+	// x is distance parallel to plane of camera, y is distance orthogonal to
+	// plane of camera.
 	f32 x, y;
 } alien_location_t;
 
