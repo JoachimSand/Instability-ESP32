@@ -18,6 +18,9 @@ static const char FPGA_TAG[] = "FpgaConnection";
 
 #define PIN_NRST GPIO_NUM_15 // IO34 (not mapped)
 
+#define M_PI 3.14159265359
+#define NO_TAPS_AVERAGING 5
+
 typedef enum spi_state
 {
 	SPI_IDLE,
@@ -36,30 +39,51 @@ typedef struct bounding_box
 	i32 left, right;
 } bounding_box_t;
 
-typedef union bb_collection
+typedef struct alien_location
 {
+	f32 x, y;
+} alien_location_t;
 
-	struct
+typedef struct alien_collection
+{
+	// Whether aliens have been located by the FPGA
+	union
 	{
-		// red : 0, blue : 1, pink : 2, yellow : 3, green : 4, teal : 5,
-		bounding_box_t red, blue, pink, yellow, green, teal;
+		struct
+		{
+			u8 red_found, blue_found, pink_found, yellow_found, green_found, teal_found;
+		};
+		u8 found_list[6];
 	};
-	bounding_box_t bb_list[6];
 
-	/*
+	// Location of aliens
 	union
 	{
 		struct
 		{
 			// red : 0, blue : 1, pink : 2, yellow : 3, green : 4, teal : 5,
-			u8 red_found, blue_found, pink_found, yellow_found, green_found, teal_found;
+			alien_location_t red, blue, pink, yellow, green, teal;
 		};
-		u8 found_list[6];
+		alien_location_t location_list[6];
 	};
-	*/
+} alien_collection_t;
+
+typedef struct bb_collection
+{
+
+	union
+	{
+		struct
+		{
+			// red : 0, blue : 1, pink : 2, yellow : 3, green : 4, teal : 5,
+			bounding_box_t red, blue, pink, yellow, green, teal;
+		};
+		bounding_box_t bb_list[6];
+	};
+
 } bb_collection_t;
 
 void init_fpga_connection(spi_device_handle_t *spi_handle);
-void get_vision_data(spi_device_handle_t *spi_handle);
+void get_vision_data(spi_device_handle_t *spi_handle, alien_collection_t *aliens);
 
 #endif

@@ -32,10 +32,11 @@ void app_main(void)
 	// WIFI stuffs
 	// init_WIFI();
 	spi_device_handle_t spi_handle;
+	alien_collection_t alien_collect;
 	init_fpga_connection(&spi_handle);
 	while (1)
 	{
-		get_vision_data(&spi_handle);
+		get_vision_data(&spi_handle, &alien_collect);
 	}
 }
 
