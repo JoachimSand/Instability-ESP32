@@ -2,7 +2,7 @@
 
 #include "esp_log.h"
 
-// #define NSQUAL
+#define NSQUAL
 
 void update_rover_position(spi_device_handle_t *hspi, rover_position_t *pos)
 {
