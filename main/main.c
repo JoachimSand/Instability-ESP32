@@ -22,6 +22,7 @@
 #include "platform.h"
 #include "drivers/motor_driver.h"
 #include "drivers/optical_flow_sensor.h"
+#include "drivers/fpga_connect.h"
 #include "drivers/backend_connect.h"
 #include "drivers/control.h"
 #include "drivers/ultrasonic.h"
@@ -123,4 +124,5 @@ void app_main(void)
         vTaskDelay(10/ portTICK_PERIOD_MS);
 
 	}
+
 }

@@ -229,6 +229,6 @@ uint8_t get_next_motion(grid_node_t* curr, grid_node_t* next, uint8_t curr_dir)
 uint8_t get_rotation_type(uint8_t curr_dir, uint8_t next_dir)
 {
     if ( curr_dir + next_dir == 1 || curr_dir + next_dir == 5) return ROTATION_180; 
-    if ( )
+    // if ( )
     return 0;
 }
