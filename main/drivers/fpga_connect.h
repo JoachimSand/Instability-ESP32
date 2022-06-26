@@ -24,6 +24,7 @@ static const char FPGA_TAG[] = "FpgaConnection";
 #define MAX_COL_DISTANCES MAX_COLS - 1
 #define MAX_COL_DERIVATES MAX_COLS - 2
 #define MAX_COL_SECOND_DERIVATES MAX_COLS - 3
+#define MAX_OBJ_COUNT 5
 
 typedef enum spi_state
 {
@@ -89,7 +90,19 @@ typedef struct bb_collection
 
 } bb_collection_t;
 
+typedef struct obstacle_transform
+{
+	f32 x, y;
+	f32 diameter;
+} obstacle_transform_t;
+
+typedef struct obstacle_collection
+{
+	obstacle_transform_t obstacle_transforms[MAX_OBJ_COUNT];
+	u8 objects_found;
+} obstacle_collection_t;
+
 void init_fpga_connection(spi_device_handle_t *spi_handle);
-void get_vision_data(spi_device_handle_t *spi_handle, alien_collection_t *aliens);
+void get_vision_data(spi_device_handle_t *spi_handle, alien_collection_t *aliens, obstacle_collection_t *obstacles);
 
 #endif

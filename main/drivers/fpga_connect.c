@@ -17,7 +17,15 @@
 
 // #define NOVERFLOW
 
-void get_vision_data(spi_device_handle_t *spi_handle, alien_collection_t *aliens)
+inline f32 pixel_pos_to_distance(i32 pixel_pos, f32 distance)
+{
+	f32 x_pixels = pixel_pos > 320 ? pixel_pos - 320 : -(320 - pixel_pos);
+	f32 angle = (x_pixels / 320) * 35 * (M_PI / 180);
+	f32 x = tanf(angle) * distance;
+	return x;
+}
+
+void get_vision_data(spi_device_handle_t *spi_handle, alien_collection_t *aliens, obstacle_collection_t *obstacles)
 {
 	esp_err_t err = spi_device_acquire_bus(*spi_handle, portMAX_DELAY);
 	if (err != ESP_OK)
@@ -156,15 +164,15 @@ void get_vision_data(spi_device_handle_t *spi_handle, alien_collection_t *aliens
 		// ESP_LOGI(FPGA_TAG, "Collumn at %u", col_positions[i]);
 	}
 
+	// Compute distance between every column
 	i32 col_distances[MAX_COL_DISTANCES];
-	// ESP_LOGI(FPGA_TAG, "Col_count %i", col_count);
-
 	for (i32 j = 0; j < col_count - 1; j++)
 	{
 		col_distances[j] = col_positions[j + 1] - col_positions[j];
 		ESP_LOGI(FPGA_TAG, "ColDistance%i %i", j, col_distances[j]);
 	}
 
+	// Compute derivatives
 	i32 col_derivates[MAX_COL_DERIVATES];
 	for (i32 c = 0; c < col_count - 2; c++)
 	{
@@ -173,11 +181,11 @@ void get_vision_data(spi_device_handle_t *spi_handle, alien_collection_t *aliens
 	}
 
 	i32 prev_col_derivative = col_derivates[0];
-	i32 gaps[5];
+	i32 gaps[MAX_OBJ_COUNT];
 	i32 gap_count = 0;
 	for (i32 c = 1; c < col_count - 2; c++)
 	{
-		if (gap_count >= 5)
+		if (gap_count >= MAX_OBJ_COUNT)
 		{
 			break;
 		}
@@ -191,12 +199,13 @@ void get_vision_data(spi_device_handle_t *spi_handle, alien_collection_t *aliens
 	}
 
 	i32 start_bound = 0;
-	bounding_box_t obstacle_bbs[5];
+	bounding_box_t obstacle_bbs[MAX_OBJ_COUNT];
 	i32 obstacle_count = 0;
 
+	// Seperate objects by looking at gaps
 	for (i32 g = 0; g <= gap_count; g++)
 	{
-		if (obstacle_count >= 5)
+		if (obstacle_count >= MAX_OBJ_COUNT)
 		{
 			break;
 		}
@@ -207,23 +216,47 @@ void get_vision_data(spi_device_handle_t *spi_handle, alien_collection_t *aliens
 			end_bound = col_count - 1;
 		}
 
-		ESP_LOGI(FPGA_TAG, "Obstacle between (%i %i)", start_bound, end_bound);
+		// Only add the object if it contains more than one column
+		if (end_bound - start_bound >= 2)
+		{
+			obstacle_bbs[obstacle_count].left = start_bound;
+			obstacle_bbs[obstacle_count].right = end_bound;
+			obstacle_count++;
+			ESP_LOGI(FPGA_TAG, "Obstacle between (%i %i)", start_bound, end_bound);
+		}
 
-		obstacle_bbs[obstacle_count].left = start_bound;
-		obstacle_bbs[obstacle_count].right = end_bound;
-
-		obstacle_count++;
 		start_bound = gaps[g] + 1;
 	}
 
+	obstacles->objects_found = 0;
+	// Determine distance to object
 	for (i32 o = 0; o < obstacle_count; o++)
 	{
-		i32 max_col_dist;
+		if (o > MAX_OBJ_COUNT)
+		{
+			break;
+		}
+		i32 avg_col_dist = 0;
 		ESP_LOGI(FPGA_TAG, "NEW OBJECT");
 		for (i32 c = obstacle_bbs[o].left; c < obstacle_bbs[o].right; c++)
 		{
-			ESP_LOGI(FPGA_TAG, "%i", col_distances[c]);
+			avg_col_dist += col_distances[c];
+			// ESP_LOGI(FPGA_TAG, "Col distance: %i", col_distances[c]);
 		}
+		avg_col_dist /= obstacle_bbs[o].right - obstacle_bbs[o].left;
+
+		f32 distance = -1.78272 + 995.63 / avg_col_dist;
+
+		ESP_LOGI(FPGA_TAG, "Avg col distance: %i, distance: %f", avg_col_dist, distance);
+		obstacles->objects_found++;
+		obstacles->obstacle_transforms[o].y = distance;
+
+		i32 col_left = col_positions[obstacle_bbs[o].left];
+		i32 col_right = col_positions[obstacle_bbs[o].right];
+		i32 bb_centre = (col_left + col_right) / 2.0f;
+		obstacles->obstacle_transforms[o].x = pixel_pos_to_distance(bb_centre, distance);
+		obstacles->obstacle_transforms[o].diameter = pixel_pos_to_distance(col_right, distance) - pixel_pos_to_distance(col_left, distance);
+		ESP_LOGI(FPGA_TAG, "X: %f, Y: %f Diameter: %f\n", obstacles->obstacle_transforms[o].x, obstacles->obstacle_transforms[o].y, obstacles->obstacle_transforms[o].diameter);
 	}
 
 	// ESP_LOGI(FPGA_TAG, "Red BB: (%u, %u)", bb_collect[head].red.left, bb_collect[head].red.right);
