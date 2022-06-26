@@ -37,10 +37,14 @@ void app_main(void)
 	alien_collection_t alien_collect;
 	obstacle_collection_t obstacle_collect;
 	init_fpga_connection(&spi_handle);
+	print_raw_vision_data(&spi_handle);
+
+	/*
 	while (1)
 	{
 		get_vision_data(&spi_handle, &alien_collect, &obstacle_collect);
 	}
+	*/
 }
 
 /*

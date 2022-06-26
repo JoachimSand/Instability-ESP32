@@ -36,7 +36,8 @@ typedef enum spi_state
 	SPI_PINK_BB,
 	SPI_YELLOW_BB,
 	SPI_GREEN_BB,
-	SPI_TEAL_BB
+	SPI_TEAL_BB,
+	SPI_TRANSMIT_PIXELS
 } spi_state_t;
 
 typedef struct bounding_box
@@ -104,5 +105,6 @@ typedef struct obstacle_collection
 
 void init_fpga_connection(spi_device_handle_t *spi_handle);
 void get_vision_data(spi_device_handle_t *spi_handle, alien_collection_t *aliens, obstacle_collection_t *obstacles);
+void print_raw_vision_data(spi_device_handle_t *spi_handle);
 
 #endif

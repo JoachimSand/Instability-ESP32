@@ -25,6 +25,50 @@ inline f32 pixel_pos_to_distance(i32 pixel_pos, f32 distance)
 	return x;
 }
 
+void print_raw_vision_data(spi_device_handle_t *spi_handle)
+{
+
+	esp_err_t err = spi_device_acquire_bus(*spi_handle, portMAX_DELAY);
+	if (err != ESP_OK)
+	{
+		ESP_LOGE(FPGA_TAG, "Failed to acquire SPI bus!");
+		return;
+	}
+
+	i32 counter = 0;
+	while (1)
+	{
+		spi_transaction_t t;
+		memset(&t, 0, sizeof(t));
+		t.flags = SPI_TRANS_USE_RXDATA;
+		t.length = 0;
+		t.rxlength = 32;
+
+		spi_device_polling_transmit(*spi_handle, &t);
+		u32 raw_data = (t.rx_data[0] << 24) | (t.rx_data[1] << 16) | (t.rx_data[2] << 8) | t.rx_data[3];
+		spi_state_t state = (spi_state_t)(t.rx_data[0] >> 4);
+		u32 x = (t.rx_data[0] << 8 | t.rx_data[1]) & 0x0FFF;
+		u32 y = t.rx_data[2] << 8 | t.rx_data[3];
+
+		if (state == SPI_READY_TO_TRANS)
+		{
+			ESP_LOGI(FPGA_TAG, "New frame, pixel count: %i", counter);
+			counter = 0;
+		}
+
+		if (state == SPI_TRANSMIT_PIXELS)
+		{
+			counter++;
+		}
+
+		if (counter % 100000 == 0)
+		{
+			vTaskDelay(1);
+			// ESP_LOGI(FPGA_TAG, "State: %i: Data: %x, X: %i, Y: %i, ", state, raw_data, x, y);
+		}
+	}
+}
+
 void get_vision_data(spi_device_handle_t *spi_handle, alien_collection_t *aliens, obstacle_collection_t *obstacles)
 {
 	esp_err_t err = spi_device_acquire_bus(*spi_handle, portMAX_DELAY);
@@ -317,20 +361,6 @@ void get_vision_data(spi_device_handle_t *spi_handle, alien_collection_t *aliens
 
 void init_fpga_connection(spi_device_handle_t *spi_handle)
 {
-	gpio_config_t config = {};
-	config.pin_bit_mask = (1ULL << PIN_NRST);
-
-	config.mode = GPIO_MODE_OUTPUT;
-	config.pull_up_en = GPIO_PULLUP_DISABLE;
-	config.pull_down_en = GPIO_PULLDOWN_DISABLE;
-	config.intr_type = GPIO_INTR_DISABLE;
-	gpio_config(&config);
-
-	// Software reset of opitcal flow sensor
-	gpio_set_level(PIN_NRST, 1);
-	vTaskDelay(1 / portTICK_PERIOD_MS);
-	gpio_set_level(PIN_NRST, 0);
-
 	// ref
 	ESP_LOGI(FPGA_TAG, "Initializing bus SPI%d...", FPGA_HOST + 1);
 
