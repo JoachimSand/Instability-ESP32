@@ -11,13 +11,14 @@
 #include "freertos/task.h"
 #include <stdio.h>
 
-static const char TCP_SERVER_ADDRESS[] = "192.168.137.1";
+static const char TCP_SERVER_ADDRESS[] = "192.168.0.10";
 static const char TCP_SERVER_PORT[] = "12000";
 // static const char TCP_SERVER_PORT[] = "19006";
 static const char TAG_WIFI[] = "BackendConnection";
-#define WIFI_SSID "PROBOOK 3239"
-#define WIFI_PASS "9=8aE932"
-#define WIFI_MAX_RETRY 100
+#define WIFI_SSID "AndroidApp"
+#define WIFI_PASS "38970269"
+#define WIFI_MAX_RETRY 5
+// #define WIFI_MAX_RETRY 100
 
 /*	Indicates that the file descriptor represents an invalid (uninitialized or closed) socket
 	Used in the TCP server structure `sock[]` which holds list of active clients we serve.*/
@@ -436,7 +437,7 @@ void send_debug_backend(const char *str, u32 len)
 
 // TODO: consider null terminations
 
-void send_live_update(rover_position_t* pos, uint8_t motor_speed_left, uint8_t motor_speed_right)
+void send_live_update(rover_position_t* pos, uint8_t motor_speed_left, uint8_t motor_speed_right, float ultrasonic_distance, uint16_t radar)
 {
 	static tcp_task_data_t data;
 	data.payload = malloc(sizeof(char) * (LIVE_POS_STRING_MAX_LEN + 2));
@@ -446,7 +447,7 @@ void send_live_update(rover_position_t* pos, uint8_t motor_speed_left, uint8_t m
     // TODO: send actual orientation
     int16_t orientation = 45;
 
-    snprintf(&(data.payload[2]), LIVE_POS_STRING_MAX_LEN, "{\"position\": {\"x\": %d,\"y\": %d}} | {\"squal\": %u, \"motor_left\": %u, \"motor_right\": %u, \"orientation\": %d}", pos->x, pos->y, pos->squal, motor_speed_left, motor_speed_right, orientation);
+    snprintf(&(data.payload[2]), LIVE_POS_STRING_MAX_LEN, "{\"position\": {\"x\": %d,\"y\": %d}} | {\"squal\": %u, \"motor_left\": %u, \"motor_right\": %u, \"orientation\": %d, \"ultrasonic\": %f, \"radar\": %d, \"battery\": %d}", pos->x, pos->y, pos->squal, motor_speed_left, motor_speed_right, orientation, ultrasonic_distance, radar, 0);
 	// memcpy(&(data.payload[2]), str, len);
 	data.len = strlen(data.payload);
 	xTaskCreate(tcp_client_task, "tcp_client", 4096, &data, 5, NULL);

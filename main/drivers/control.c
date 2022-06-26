@@ -19,7 +19,7 @@ void update_rover_position(spi_device_handle_t *hspi, rover_position_t *pos)
 #endif
 }
 
-void update_controller(spi_device_handle_t *hspi, controller_t *controller)
+uint8_t update_controller(spi_device_handle_t *hspi, controller_t *controller)
 {
 	// Don't update here to avoid double op flow read
 	// update_rover_position(hspi, &(controller->pos));
@@ -43,6 +43,8 @@ void update_controller(spi_device_handle_t *hspi, controller_t *controller)
 	float d = controller->kd * (error - controller->prev_error) / controller->Ts;
 
 	controller->output = p + i + d;
+
+    return (abs(error) < CONTROLLER_THRESHOLD);
 }
 
 void init_controller(float kp_, float ki_, float kd_, float Ts_, int32_t setpoint_, uint8_t control_axis_, rover_position_t *pos_, controller_t *controller)
