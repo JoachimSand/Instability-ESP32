@@ -14,11 +14,11 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 
-#define PWM_A   GPIO_NUM_5
-#define AI1     GPIO_NUM_19
-#define AI2     GPIO_NUM_18
+#define PWM_A   GPIO_NUM_2
+#define AI1     GPIO_NUM_4
+#define AI2     GPIO_NUM_15
 
-#define PWM_B   GPIO_NUM_23
+#define PWM_B   GPIO_NUM_33
 #define BI1     GPIO_NUM_21
 #define BI2     GPIO_NUM_22
 
