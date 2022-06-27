@@ -336,7 +336,7 @@ void get_vision_data(spi_device_handle_t *spi_handle, alien_collection_t *aliens
 			continue;
 		}
 
-		f32 distance = 6.47128 + 1772.223 / width;
+		f32 distance = 18.1357 + 1167.879 / width;
 
 		/*
 		if (distance > 65 || distance < 20)
