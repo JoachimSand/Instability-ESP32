@@ -90,7 +90,7 @@ void get_vision_data(spi_device_handle_t *spi_handle, alien_collection_t *aliens
 	static u8 head = 0;
 	head++;
 	head = head % 5;
-	ESP_LOGI(FPGA_TAG, "%i\n", head);
+	// ESP_LOGI(FPGA_TAG, "%i\n", head);
 	static bb_collection_t bb_past_collections[NO_TAPS_AVERAGING] = {0};
 
 	while (ready_to_trans_count < 2)

@@ -437,18 +437,14 @@ void send_debug_backend(const char *str, u32 len)
 
 // TODO: consider null terminations
 
-void send_live_update(rover_position_t* pos, uint8_t motor_speed_left, uint8_t motor_speed_right, float ultrasonic_distance, uint16_t radar)
+void send_live_update(rover_position_t* pos, uint8_t motor_speed_left, uint8_t motor_speed_right, uint8_t orientation, float ultrasonic_distance, uint16_t radar, uint8_t battery)
 {
 	static tcp_task_data_t data;
 	data.payload = malloc(sizeof(char) * (LIVE_POS_STRING_MAX_LEN + 2));
 	data.payload[0] = 'l';
 	data.payload[1] = ' ';
 
-    // TODO: send actual orientation
-    int16_t orientation = 45;
-
-    snprintf(&(data.payload[2]), LIVE_POS_STRING_MAX_LEN, "{\"position\": {\"x\": %d,\"y\": %d}} | {\"squal\": %u, \"motor_left\": %u, \"motor_right\": %u, \"orientation\": %d, \"ultrasonic\": %f, \"radar\": %d, \"battery\": %d}", pos->x, pos->y, pos->squal, motor_speed_left, motor_speed_right, orientation, ultrasonic_distance, radar, 0);
-	// memcpy(&(data.payload[2]), str, len);
+    snprintf(&(data.payload[2]), LIVE_POS_STRING_MAX_LEN, "{\"position\": {\"x\": %d,\"y\": %d}} | {\"squal\": %u, \"motor_left\": %u, \"motor_right\": %u, \"orientation\": %d, \"ultrasonic\": %f, \"radar\": %d, \"battery\": %d}", pos->x, pos->y, pos->squal, motor_speed_left, motor_speed_right, orientation, ultrasonic_distance, radar, battery);
 	data.len = strlen(data.payload);
 	xTaskCreate(tcp_client_task, "tcp_client", 4096, &data, 5, NULL);
 }
@@ -458,6 +454,18 @@ void send_alien_position(rover_position_t *pos)
 	static tcp_task_data_t data;
 	data.payload = malloc(sizeof(char) * (LIVE_POS_STRING_MAX_LEN + 2));
 	data.payload[0] = 'a';
+	data.payload[1] = ' ';
+	snprintf(&(data.payload[2]), LIVE_POS_STRING_MAX_LEN, "{\"position\": {\"x\": %d,\"y\": %d}} ", pos->x, pos->y);
+	// memcpy(&(data.payload[2]), str, len);
+	data.len = strlen(data.payload);
+	xTaskCreate(tcp_client_task, "tcp_client", 4096, &data, 5, NULL);
+}
+
+void send_obstacle_position(rover_position_t *pos)
+{
+	static tcp_task_data_t data;
+	data.payload = malloc(sizeof(char) * (LIVE_POS_STRING_MAX_LEN + 2));
+	data.payload[0] = 'o';
 	data.payload[1] = ' ';
 	snprintf(&(data.payload[2]), LIVE_POS_STRING_MAX_LEN, "{\"position\": {\"x\": %d,\"y\": %d}} ", pos->x, pos->y);
 	// memcpy(&(data.payload[2]), str, len);
