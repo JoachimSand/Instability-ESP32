@@ -10,6 +10,7 @@
 #include "freertos/event_groups.h"
 #include "freertos/task.h"
 #include <stdio.h>
+#include "motor_driver.h"
 
 static const char TCP_SERVER_ADDRESS[] = "192.168.0.10";
 static const char TCP_SERVER_PORT[] = "12000";
@@ -184,6 +185,7 @@ error:
 	}
 	free(address_info);
 	free(data->payload);
+	data->payload = NULL;
 	vTaskDelete(NULL);
 }
 
@@ -213,6 +215,44 @@ static void server_recieve(const int sock)
 			// Transmit back whatever the backend sent us
 			// send() can return less bytes than supplied length.
 			// Walk-around for robust implementation.
+			switch (rx_buffer[0])
+			{
+			case 'F':
+			{
+				ESP_LOGI("MANUAL CONTROL", "Forward");
+				motor_move(DIR_FORWARD, 150, 0);
+			}
+			break;
+
+			case 'B':
+			{
+				ESP_LOGI("MANUAL CONTROL", "Backwards");
+				motor_move(DIR_BACKWARD, 150, 0);
+			}
+			break;
+
+			case 'R':
+			{
+				motor_rotate_in_place(DIR_RIGHT, 100);
+				ESP_LOGI("MANUAL CONTROL", "Right");
+			}
+			break;
+
+			case 'L':
+			{
+				motor_rotate_in_place(DIR_LEFT, 100);
+				ESP_LOGI("MANUAL CONTROL", "Left");
+			}
+			break;
+
+			case 'S':
+			{
+				motor_stop();
+				ESP_LOGI("MANUAL CONTROL", "Stop");
+			}
+			break;
+			}
+
 			int to_write = len;
 			while (to_write > 0)
 			{
@@ -426,7 +466,13 @@ void init_WIFI(void)
 // function.
 void send_debug_backend(const char *str, u32 len)
 {
-	static tcp_task_data_t data;
+	static tcp_task_data_t data = {0};
+	// previous payload has not yet been delivered, don't send message.
+	if (data.payload != NULL)
+	{
+		return;
+	}
+
 	data.payload = malloc(sizeof(char) * (len + 2));
 	data.payload[0] = 'd';
 	data.payload[1] = ' ';
@@ -439,19 +485,31 @@ void send_debug_backend(const char *str, u32 len)
 
 void send_live_update(rover_position_t* pos, uint8_t motor_speed_left, uint8_t motor_speed_right, uint8_t orientation, float ultrasonic_distance, uint16_t radar, uint8_t battery)
 {
-	static tcp_task_data_t data;
+	static tcp_task_data_t data = {0};
+
+	// previous payload has not yet been delivered, don't send message.
+	if (data.payload != NULL)
+	{
+		return;
+	}
+
 	data.payload = malloc(sizeof(char) * (LIVE_POS_STRING_MAX_LEN + 2));
 	data.payload[0] = 'l';
 	data.payload[1] = ' ';
 
     snprintf(&(data.payload[2]), LIVE_POS_STRING_MAX_LEN, "{\"position\": {\"x\": %d,\"y\": %d}} | {\"squal\": %u, \"motor_left\": %u, \"motor_right\": %u, \"orientation\": %d, \"ultrasonic\": %f, \"radar\": %d, \"battery\": %d}", pos->x, pos->y, pos->squal, motor_speed_left, motor_speed_right, orientation, ultrasonic_distance, radar, battery);
-	data.len = strlen(data.payload);
+    data.len = strlen(data.payload);
 	xTaskCreate(tcp_client_task, "tcp_client", 4096, &data, 5, NULL);
 }
 
 void send_alien_position(rover_position_t *pos)
 {
-	static tcp_task_data_t data;
+	static tcp_task_data_t data = {0};
+	// previous payload has not yet been delivered, don't send message.
+	if (data.payload != NULL)
+	{
+		return;
+	}
 	data.payload = malloc(sizeof(char) * (LIVE_POS_STRING_MAX_LEN + 2));
 	data.payload[0] = 'a';
 	data.payload[1] = ' ';
@@ -475,7 +533,12 @@ void send_obstacle_position(rover_position_t *pos)
 
 void send_path(rover_position_t *start_pos, rover_position_t *end_pos)
 {
-	static tcp_task_data_t data;
+	static tcp_task_data_t data = {0};
+	// previous payload has not yet been delivered, don't send message.
+	if (data.payload != NULL)
+	{
+		return;
+	}
 	data.payload = malloc(sizeof(char) * PATH_STRING_MAX_LEN);
 	snprintf(data.payload, PATH_STRING_MAX_LEN, "{\"start\": {\"position\": {\"x\": %d,\"y\": %d}},\"end\": {\"position\": {\"x\": %d,\"y\": %d}}}", start_pos->x, start_pos->y, end_pos->x, end_pos->y);
 	data.len = strlen(data.payload);

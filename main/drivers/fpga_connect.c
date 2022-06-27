@@ -281,15 +281,16 @@ void get_vision_data(spi_device_handle_t *spi_handle, alien_collection_t *aliens
 			break;
 		}
 		i32 avg_col_dist = 0;
-		// ESP_LOGI(FPGA_TAG, "NEW OBJECT");
+		ESP_LOGI(FPGA_TAG, "NEW OBJECT");
 		for (i32 c = obstacle_bbs[o].left; c < obstacle_bbs[o].right; c++)
 		{
 			avg_col_dist += col_distances[c];
-			// ESP_LOGI(FPGA_TAG, "Col distance: %i", col_distances[c]);
+			ESP_LOGI(FPGA_TAG, "Col distance: %i", col_distances[c]);
 		}
 		avg_col_dist /= obstacle_bbs[o].right - obstacle_bbs[o].left;
+		ESP_LOGI(FPGA_TAG, "Object avg col distance: %i", avg_col_dist);
 
-		f32 distance = -1.78272 + 995.63 / avg_col_dist;
+		f32 distance = -3.45618 + 1333.54 / (f32)avg_col_dist;
 
 		// ESP_LOGI(FPGA_TAG, "Avg col distance: %i, distance: %f", avg_col_dist, distance);
 		obstacles->objects_found++;
@@ -300,7 +301,7 @@ void get_vision_data(spi_device_handle_t *spi_handle, alien_collection_t *aliens
 		i32 bb_centre = (col_left + col_right) / 2.0f;
 		obstacles->obstacle_transforms[o].x = pixel_pos_to_distance(bb_centre, distance);
 		obstacles->obstacle_transforms[o].diameter = pixel_pos_to_distance(col_right, distance) - pixel_pos_to_distance(col_left, distance);
-		// ESP_LOGI(FPGA_TAG, "X: %f, Y: %f Diameter: %f\n", obstacles->obstacle_transforms[o].x, obstacles->obstacle_transforms[o].y, obstacles->obstacle_transforms[o].diameter);
+		ESP_LOGI(FPGA_TAG, "X: %f, Y: %f Diameter: %f\n", obstacles->obstacle_transforms[o].x, obstacles->obstacle_transforms[o].y, obstacles->obstacle_transforms[o].diameter);
 	}
 
 	bb_collection_t averaged_boxes = {0};
@@ -336,7 +337,7 @@ void get_vision_data(spi_device_handle_t *spi_handle, alien_collection_t *aliens
 			continue;
 		}
 
-		f32 distance = 6.47128 + 1772.223 / width;
+		f32 distance = 18.1357 + 1167.879 / width;
 
 		/*
 		if (distance > 65 || distance < 20)
