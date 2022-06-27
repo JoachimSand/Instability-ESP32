@@ -51,7 +51,7 @@ typedef struct controller
 #define ROTATION_CNT_PER_DEGRES 11 //not correct
 
 
-void update_rover_position(spi_device_handle_t* hspi, rover_position_t* pos);
+void update_rover_position(spi_device_handle_t* hspi, rover_position_t* pos, uint8_t curr_dir);
 
 uint8_t update_controller(spi_device_handle_t* hspi, controller_t* controller);
 

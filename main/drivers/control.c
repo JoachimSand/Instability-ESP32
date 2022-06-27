@@ -1,17 +1,36 @@
 #include "control.h"
 
 #include "esp_log.h"
+#include "pathfinding.h"
 
 #define NSQUAL
 
-void update_rover_position(spi_device_handle_t *hspi, rover_position_t *pos)
+void update_rover_position(spi_device_handle_t* hspi, rover_position_t* pos, uint8_t curr_dir)
 {
 	optical_flow_data_t op_flow_data;
 	optical_flow_sensor_read(hspi, &op_flow_data);
 
-	// TODO: add check for squal > SQUAL_THRESHOLD
-	pos->x += (int32_t)op_flow_data.delta_x;
-	pos->y += (int32_t)op_flow_data.delta_y;
+    if (curr_dir == POS_X)
+    {
+        pos->x += (int32_t)op_flow_data.delta_y;
+        pos->y += (int32_t)op_flow_data.delta_x;
+    }
+    if (curr_dir == NEG_X)
+    {
+        pos->x -= (int32_t)op_flow_data.delta_y;
+        pos->y -= (int32_t)op_flow_data.delta_x;
+    }
+    if (curr_dir == POS_Y)
+    {
+        pos->x += (int32_t)op_flow_data.delta_x;
+        pos->y += (int32_t)op_flow_data.delta_y;
+    }
+    if (curr_dir == NEG_Y)
+    {
+        pos->x -= (int32_t)op_flow_data.delta_x;
+        pos->y -= (int32_t)op_flow_data.delta_y;
+    }
+
     pos->squal = op_flow_data.squal;
 
 #ifndef NSQUAL

@@ -38,7 +38,7 @@ uint8_t find_a_star_path(grid_node_t* start, grid_node_t* end)
     while (!is_open_nodes_empty())
     {
         grid_node_t curr_node = find_min_fscore();
-        ESP_LOGI("ASTAR", "current node -> x: %d, y: %d ", curr_node.x, curr_node.y);
+        // ESP_LOGI("ASTAR", "current node -> x: %d, y: %d ", curr_node.x, curr_node.y);
         if (curr_node.x == end->x && curr_node.y == end->y)  return 1;
     
 
@@ -187,20 +187,37 @@ void init_obstacle_map()
     }
 }
 
-void get_path(grid_node_t path[])
+uint8_t get_path_length(grid_node_t path[])
 {
     grid_node_t curr = end_s;
-    int32_t index = MAX_PATH_LENGTH - 1;
+    uint8_t len = 0;
+    while (curr.x != start_s.x || curr.y != start_s.y)
+    {
+        len++;
+        curr = cameFrom[curr.x][curr.y];
+    }
+    len++;
+    return len;
+}
+
+void get_path(grid_node_t path[])
+{
+    uint8_t path_len = get_path_length(path); 
+
+    grid_node_t curr = end_s;
+    int32_t index = path_len - 1;
+
     while (curr.x != start_s.x || curr.y != start_s.y)
     {
         path[index] = curr; 
-        // ESP_LOGI("ASTAR", "x: %d, y: %d", curr.x, curr.y);
+        ESP_LOGI("ASTAR", "x: %d, y: %d", curr.x, curr.y);
+        // ESP_LOGI("ASTAR", "index: %d", index);
         curr = cameFrom[curr.x][curr.y];
         index--;
     }
     path[index] = curr; 
-    // ESP_LOGI("ASTAR", "x: %d, y: %d", curr.x, curr.y);
-    // ESP_LOGI("ASTAR", "Done with path printing");
+    ESP_LOGI("ASTAR", "x: %d, y: %d", curr.x, curr.y);
+    ESP_LOGI("ASTAR", "Done with path updating");
 }
 
 uint8_t get_next_direction(grid_node_t* curr, grid_node_t* next)
@@ -219,16 +236,39 @@ uint8_t get_next_direction(grid_node_t* curr, grid_node_t* next)
 
 uint8_t get_next_motion(grid_node_t* curr, grid_node_t* next, uint8_t curr_dir)
 {
-   uint8_t next_direction = get_next_direction(curr, next); 
+    if (next->x == -1 && next->y == -1) return PATH_FINISHED;
 
-   if (next_direction == curr_dir) return MOTION_FORWARD;
+    uint8_t next_direction = get_next_direction(curr, next); 
 
-   return MOTION_ROTATE;
+    if (next_direction == curr_dir) return MOTION_FORWARD;
+
+    return MOTION_ROTATE;
 }
 
 uint8_t get_rotation_type(uint8_t curr_dir, uint8_t next_dir)
 {
     if ( curr_dir + next_dir == 1 || curr_dir + next_dir == 5) return ROTATION_180; 
-    // if ( )
-    return 0;
+    
+    if (curr_dir == POS_X && next_dir == POS_Y) return ROTATION_90_LEFT;
+    if (curr_dir == POS_Y && next_dir == NEG_X) return ROTATION_90_LEFT;
+    if (curr_dir == NEG_X && next_dir == NEG_Y) return ROTATION_90_LEFT;
+    if (curr_dir == NEG_Y && next_dir == POS_X) return ROTATION_90_LEFT;
+
+    if (curr_dir == POS_X && next_dir == NEG_Y) return ROTATION_90_RIGHT;
+    if (curr_dir == NEG_Y && next_dir == NEG_X) return ROTATION_90_RIGHT;
+    if (curr_dir == NEG_X && next_dir == POS_Y) return ROTATION_90_RIGHT;
+    if (curr_dir == POS_Y && next_dir == POS_X) return ROTATION_90_RIGHT;
+
+    return NO_ROTATION;
 }
+
+
+
+
+
+
+
+
+
+
+
