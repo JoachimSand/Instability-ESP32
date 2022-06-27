@@ -59,6 +59,20 @@ void print_raw_vision_data(spi_device_handle_t *spi_handle)
 		if (state == SPI_TRANSMIT_PIXELS)
 		{
 			counter++;
+			printf("%i%i%i%i%i%i%i%i",
+				   (raw_data >> 24) & 0b111,
+				   (raw_data >> 21) & 0b111,
+				   (raw_data >> 18) & 0b111,
+				   (raw_data >> 15) & 0b111,
+				   (raw_data >> 12) & 0b111,
+				   (raw_data >> 9) & 0b111,
+				   (raw_data >> 6) & 0b111,
+				   (raw_data >> 3) & 0b111
+				   /*(raw_data >> 0) & 0b111*/);
+			if (counter % 640 == 0)
+			{
+				printf("END\n");
+			}
 		}
 
 		if (counter % 100000 == 0)
