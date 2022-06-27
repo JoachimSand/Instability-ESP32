@@ -198,7 +198,7 @@ void get_vision_data(spi_device_handle_t *spi_handle, alien_collection_t *aliens
 
 		if (readings_count >= 10000)
 		{
-			ESP_LOGI(FPGA_TAG, "WARNING: Could not get vision data - FPGA not responding.");
+			// ESP_LOGI(FPGA_TAG, "WARNING: Could not get vision data - FPGA not responding.");
 			break;
 		}
 	}
@@ -213,7 +213,7 @@ void get_vision_data(spi_device_handle_t *spi_handle, alien_collection_t *aliens
 	for (i32 j = 0; j < col_count - 1; j++)
 	{
 		col_distances[j] = col_positions[j + 1] - col_positions[j];
-		ESP_LOGI(FPGA_TAG, "ColDistance%i %i", j, col_distances[j]);
+		// ESP_LOGI(FPGA_TAG, "ColDistance%i %i", j, col_distances[j]);
 	}
 
 	// Compute derivatives
@@ -266,7 +266,7 @@ void get_vision_data(spi_device_handle_t *spi_handle, alien_collection_t *aliens
 			obstacle_bbs[obstacle_count].left = start_bound;
 			obstacle_bbs[obstacle_count].right = end_bound;
 			obstacle_count++;
-			ESP_LOGI(FPGA_TAG, "Obstacle between (%i %i)", start_bound, end_bound);
+			// ESP_LOGI(FPGA_TAG, "Obstacle between (%i %i)", start_bound, end_bound);
 		}
 
 		start_bound = gaps[g] + 1;
@@ -281,7 +281,7 @@ void get_vision_data(spi_device_handle_t *spi_handle, alien_collection_t *aliens
 			break;
 		}
 		i32 avg_col_dist = 0;
-		ESP_LOGI(FPGA_TAG, "NEW OBJECT");
+		// ESP_LOGI(FPGA_TAG, "NEW OBJECT");
 		for (i32 c = obstacle_bbs[o].left; c < obstacle_bbs[o].right; c++)
 		{
 			avg_col_dist += col_distances[c];
@@ -291,7 +291,7 @@ void get_vision_data(spi_device_handle_t *spi_handle, alien_collection_t *aliens
 
 		f32 distance = -1.78272 + 995.63 / avg_col_dist;
 
-		ESP_LOGI(FPGA_TAG, "Avg col distance: %i, distance: %f", avg_col_dist, distance);
+		// ESP_LOGI(FPGA_TAG, "Avg col distance: %i, distance: %f", avg_col_dist, distance);
 		obstacles->objects_found++;
 		obstacles->obstacle_transforms[o].y = distance;
 
@@ -300,15 +300,8 @@ void get_vision_data(spi_device_handle_t *spi_handle, alien_collection_t *aliens
 		i32 bb_centre = (col_left + col_right) / 2.0f;
 		obstacles->obstacle_transforms[o].x = pixel_pos_to_distance(bb_centre, distance);
 		obstacles->obstacle_transforms[o].diameter = pixel_pos_to_distance(col_right, distance) - pixel_pos_to_distance(col_left, distance);
-		ESP_LOGI(FPGA_TAG, "X: %f, Y: %f Diameter: %f\n", obstacles->obstacle_transforms[o].x, obstacles->obstacle_transforms[o].y, obstacles->obstacle_transforms[o].diameter);
+		// ESP_LOGI(FPGA_TAG, "X: %f, Y: %f Diameter: %f\n", obstacles->obstacle_transforms[o].x, obstacles->obstacle_transforms[o].y, obstacles->obstacle_transforms[o].diameter);
 	}
-
-	// ESP_LOGI(FPGA_TAG, "Red BB: (%u, %u)", bb_collect[head].red.left, bb_collect[head].red.right);
-	// ESP_LOGI(FPGA_TAG, "blue BB: (%u, %u)", bb_collect[head].blue.left, bb_collect[head].blue.right);
-	// ESP_LOGI(FPGA_TAG, "green BB: (%u, %u)", bb_collect[head].green.left, bb_collect[head].green.right);
-	// ESP_LOGI(FPGA_TAG, "teal BB: (%u, %u)", bb_collect[head].teal.left, bb_collect[head].teal.right);
-	// ESP_LOGI(FPGA_TAG, "pink BB: (%u, %u)", bb_collect[head].pink.left, bb_collect[head].pink.right);
-	// ESP_LOGI(FPGA_TAG, "yellow BB: (%u, %u)", bb_collect[head].yellow.left, bb_collect[head].yellow.right);
 
 	bb_collection_t averaged_boxes = {0};
 	// performed averaging
@@ -326,22 +319,30 @@ void get_vision_data(spi_device_handle_t *spi_handle, alien_collection_t *aliens
 		averaged_boxes.bb_list[i].right /= NO_TAPS_AVERAGING;
 	}
 
+	// ESP_LOGI(FPGA_TAG, "Red BB: (%u, %u)", averaged_boxes.red.left, averaged_boxes.red.right);
+	// ESP_LOGI(FPGA_TAG, "blue BB: (%u, %u)", averaged_boxes.blue.left, averaged_boxes.blue.right);
+	// ESP_LOGI(FPGA_TAG, "pink BB: (%u, %u)", averaged_boxes.pink.left, averaged_boxes.pink.right);
+	// ESP_LOGI(FPGA_TAG, "yellow BB: (%u, %u)", averaged_boxes.yellow.left, averaged_boxes.yellow.right);
+	// ESP_LOGI(FPGA_TAG, "green BB: (%u, %u)", averaged_boxes.green.left, averaged_boxes.green.right);
+	// ESP_LOGI(FPGA_TAG, "teal BB: (%u, %u)", averaged_boxes.teal.left, averaged_boxes.teal.right);
+
 	for (i32 i = 0; i < 6; i++)
 	{
 		aliens->found_list[i] = 0;
 		i32 width = abs(averaged_boxes.bb_list[i].left - averaged_boxes.bb_list[i].right);
 
-		if (width > 120 || width < 20)
+		if (width > 320 || width < 20)
 		{
 			continue;
 		}
 
 		f32 distance = 6.47128 + 1772.223 / width;
 
+		/*
 		if (distance > 65 || distance < 20)
 		{
 			continue;
-		}
+		}*/
 
 		aliens->found_list[i] = 1;
 
