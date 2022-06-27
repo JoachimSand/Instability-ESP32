@@ -44,4 +44,6 @@ uint8_t saturate_to_uint8(int16_t val);
 
 uint8_t saturate_uint8_to_val(int16_t input, uint8_t limit);
 
+int16_t saturate_int16_to_val(int16_t input, int16_t abs_limit);
+
 #endif

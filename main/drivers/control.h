@@ -44,11 +44,11 @@ typedef struct controller
 #define CONTROLER_IN_PROGRESS 0 
 #define CONTROLLER_REACHED_SETPOINT 1
 
-#define CONTROLLER_THRESHOLD 50
+#define CONTROLLER_THRESHOLD 25
 
-#define MAX_FORWARD_VEL 150
 #define FORWARD_CNT_PER_CM 48
-#define ROTATION_CNT_PER_DEGRES 11 //not correct
+#define ROTATION_CNT_PER_DEGRES 12.9f
+// #define ROTATION_CNT_PER_DEGRES 13.0f
 
 
 void update_rover_position(spi_device_handle_t* hspi, rover_position_t* pos, uint8_t curr_dir);

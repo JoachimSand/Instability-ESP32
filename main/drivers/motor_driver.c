@@ -1,5 +1,7 @@
 #include "motor_driver.h"
 #include "driver/ledc.h"
+#include "esp_log.h"
+#include "freertos/portmacro.h"
 #include "hal/ledc_types.h"
 
 void init_gpio_motors(void)
@@ -22,10 +24,10 @@ void init_pwm_motors(void)
     // Timer 0 config
     ledc_timer_config_t timer_config = {};
     
-    timer_config.speed_mode = LEDC_LOW_SPEED_MODE;
+    timer_config.speed_mode = LEDC_HIGH_SPEED_MODE;
     timer_config.duty_resolution = LEDC_TIMER_8_BIT;
     timer_config.timer_num = LEDC_TIMER_0;
-    timer_config.freq_hz = 1000;
+    timer_config.freq_hz = 10000;
     timer_config.clk_cfg = LEDC_AUTO_CLK;
 
     ledc_timer_config(&timer_config);
@@ -37,7 +39,7 @@ void init_pwm_motors(void)
     // Channel A config
     ledc_channel_config_t channel_config = {};
     channel_config.gpio_num = PWM_A;
-    channel_config.speed_mode = LEDC_LOW_SPEED_MODE;
+    channel_config.speed_mode = LEDC_HIGH_SPEED_MODE;
     channel_config.channel = LEDC_CHANNEL_0;
     channel_config.intr_type = LEDC_INTR_DISABLE;
     channel_config.timer_sel = LEDC_TIMER_0;
@@ -70,10 +72,12 @@ void motor_move(uint8_t dir, uint8_t speed, int16_t delta)
     uint8_t speed_channel_0 = saturate_to_uint8((int16_t)speed - (int16_t) delta);
     uint8_t speed_channel_1 = saturate_to_uint8((int16_t)speed + (int16_t) delta);
 
-    ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, speed_channel_0);
-    ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0);
-    ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_1, speed_channel_1);
-    ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_1);
+    vTaskDelay(10 / portTICK_PERIOD_MS);
+    
+    ledc_set_duty(LEDC_HIGH_SPEED_MODE, LEDC_CHANNEL_0, speed_channel_0);
+    ledc_set_duty(LEDC_HIGH_SPEED_MODE, LEDC_CHANNEL_1, speed_channel_1);
+    ledc_update_duty(LEDC_HIGH_SPEED_MODE, LEDC_CHANNEL_0);
+    ledc_update_duty(LEDC_HIGH_SPEED_MODE, LEDC_CHANNEL_1);
 }
 
 void motor_stop(void)
@@ -95,10 +99,13 @@ void motor_rotate_in_place(uint8_t dir, uint8_t speed)
     gpio_set_level(BI1, !dir);
     gpio_set_level(BI2, dir);
 
-    ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, speed);
-    ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0);
-    ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_1, speed);
-    ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_1);
+    // vTaskDelay(100 / portTICK_PERIOD_MS);
+
+    ledc_set_duty(LEDC_HIGH_SPEED_MODE, LEDC_CHANNEL_0, speed);
+    ledc_set_duty(LEDC_HIGH_SPEED_MODE, LEDC_CHANNEL_1, speed);
+    ledc_update_duty(LEDC_HIGH_SPEED_MODE, LEDC_CHANNEL_0);
+    ledc_update_duty(LEDC_HIGH_SPEED_MODE, LEDC_CHANNEL_1);
+    // ESP_LOGI("MOTOR ROTATE SPEED", "speed: %d", speed);
 }
 
 
@@ -115,3 +122,11 @@ uint8_t saturate_uint8_to_val(int16_t input, uint8_t limit)
     if (input < 0)    return 0;
     return (uint8_t) input;
 }
+
+int16_t saturate_int16_to_val(int16_t input, int16_t abs_limit)
+{
+    if (input > abs_limit)  return abs_limit;
+    if (input < -abs_limit)  return -abs_limit;
+    return input;
+}
+
