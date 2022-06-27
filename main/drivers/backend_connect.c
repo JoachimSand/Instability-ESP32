@@ -10,6 +10,7 @@
 #include "freertos/event_groups.h"
 #include "freertos/task.h"
 #include <stdio.h>
+#include "motor_driver.h"
 
 static const char TCP_SERVER_ADDRESS[] = "192.168.0.10";
 static const char TCP_SERVER_PORT[] = "12000";
@@ -214,6 +215,44 @@ static void server_recieve(const int sock)
 			// Transmit back whatever the backend sent us
 			// send() can return less bytes than supplied length.
 			// Walk-around for robust implementation.
+			switch (rx_buffer[0])
+			{
+			case 'F':
+			{
+				ESP_LOGI("MANUAL CONTROL", "Forward");
+				motor_move(DIR_FORWARD, 150, 0);
+			}
+			break;
+
+			case 'B':
+			{
+				ESP_LOGI("MANUAL CONTROL", "Backwards");
+				motor_move(DIR_BACKWARD, 150, 0);
+			}
+			break;
+
+			case 'R':
+			{
+				motor_rotate_in_place(DIR_RIGHT, 100);
+				ESP_LOGI("MANUAL CONTROL", "Right");
+			}
+			break;
+
+			case 'L':
+			{
+				motor_rotate_in_place(DIR_LEFT, 100);
+				ESP_LOGI("MANUAL CONTROL", "Left");
+			}
+			break;
+
+			case 'S':
+			{
+				motor_stop();
+				ESP_LOGI("MANUAL CONTROL", "Stop");
+			}
+			break;
+			}
+
 			int to_write = len;
 			while (to_write > 0)
 			{
