@@ -36,6 +36,65 @@
 #define MAX_ROTATION_VEL 150
 #define MAX_MOTOR_DELTA 15
 
+void update_vision(spi_device_handle_t* spi_handle_fpga, obstacle_collection_t* current_obstacles, alien_collection_t* current_aliens, uint8_t curr_dir,
+        rover_position_t* rover_pos, uint16_t obstacle_count_map[][GRID_SIZE_Y], grid_node_t* current_rover_node, grid_node_t* end, grid_node_t current_path[], int32_t* current_path_index, uint8_t* need_to_init_controller)
+{
+        get_vision_data(spi_handle_fpga, current_aliens, current_obstacles);
+
+		for (i32 i = 0; i < current_obstacles->objects_found; i++)
+		{
+			// Add each detected obstacle to the A star grid
+			f32 rover_x_cm, rover_y_cm;
+			rover_x_cm = rover_pos->x / (f32)FORWARD_CNT_PER_CM;
+			rover_y_cm = rover_pos->y / (f32)FORWARD_CNT_PER_CM;
+
+			// ESP_LOGI("ObstacleCM", "(%f, %f) (%d, %d)", rover_x_cm, rover_y_cm, rover_po->.x, rover_pos.y);
+
+			f32 obstacle_x_cm = 1, obstacle_y_cm = 1;
+
+			if (curr_dir == POS_X)
+			{
+				obstacle_x_cm = rover_x_cm + current_obstacles->obstacle_transforms[i].y;
+				obstacle_y_cm = rover_y_cm - current_obstacles->obstacle_transforms[i].x;
+			}
+			else if (curr_dir == NEG_X)
+			{
+				obstacle_x_cm = rover_x_cm - current_obstacles->obstacle_transforms[i].y;
+				obstacle_y_cm = rover_y_cm + current_obstacles->obstacle_transforms[i].x;
+			}
+			else if (curr_dir == POS_Y)
+			{
+				obstacle_x_cm = rover_x_cm - current_obstacles->obstacle_transforms[i].x;
+				obstacle_y_cm = rover_y_cm + current_obstacles->obstacle_transforms[i].y;
+			}
+			else if (curr_dir == NEG_Y)
+			{
+				obstacle_x_cm = rover_x_cm + current_obstacles->obstacle_transforms[i].x;
+				obstacle_y_cm = rover_y_cm - current_obstacles->obstacle_transforms[i].y;
+			}
+
+			ESP_LOGI("OBSTACLE", "Obstacle %i: (%f, %f), (%f, %f)", i, current_obstacles->obstacle_transforms[i].x, current_obstacles->obstacle_transforms[i].y, obstacle_x_cm, obstacle_y_cm);
+
+			grid_node_t obstacle;
+
+			obstacle.x = (obstacle_x_cm + (GRID_NODE_SIZE / 2.0f)) / GRID_NODE_SIZE;
+			obstacle.y = (obstacle_y_cm + (GRID_NODE_SIZE / 2.0f)) / GRID_NODE_SIZE;
+
+			obstacle_count_map[obstacle.x][obstacle.y]++;
+			ESP_LOGI("OBSTACLEGRID", "(%d, %d), %d", obstacle.x, obstacle.y, obstacle_count_map[obstacle.x][obstacle.y]);
+
+			if (obstacle_count_map[obstacle.x][obstacle.y] == 5)
+			{
+				ESP_LOGI("ObstacleDetected", "Obstacle added to grid at (%d, %d)", obstacle.x, obstacle.y);
+				add_obstacle(&obstacle);
+				find_a_star_path(current_rover_node, end);
+				get_path(&current_path);
+				*current_path_index = 1;
+                *need_to_init_controller = 1;
+			}
+		}
+}
+
 void app_main(void)
 {
 	// WIFI stuffs
@@ -125,62 +184,13 @@ void app_main(void)
 		// Get data from FPGA
 		obstacle_collection_t current_obstacles = {0};
 		alien_collection_t current_aliens = {0};
-		get_vision_data(&spi_handle_fpga, &current_aliens, &current_obstacles);
 
-		for (i32 i = 0; i < current_obstacles.objects_found; i++)
-		{
-			// Add each detected obstacle to the A star grid
-			f32 rover_x_cm, rover_y_cm;
-			rover_x_cm = rover_pos.x / (f32)FORWARD_CNT_PER_CM;
-			rover_y_cm = rover_pos.y / (f32)FORWARD_CNT_PER_CM;
+        update_vision(&spi_handle_fpga, &current_obstacles, &current_aliens, curr_dir, &rover_pos, obstacle_count_map, &current_rover_node, &end, current_path, &current_path_index, &need_to_init_controller);
 
-			// ESP_LOGI("ObstacleCM", "(%f, %f) (%d, %d)", rover_x_cm, rover_y_cm, rover_pos.x, rover_pos.y);
-
-			f32 obstacle_x_cm = 1, obstacle_y_cm = 1;
-
-			if (curr_dir == POS_X)
-			{
-				obstacle_x_cm = rover_x_cm + current_obstacles.obstacle_transforms[i].y;
-				obstacle_y_cm = rover_y_cm - current_obstacles.obstacle_transforms[i].x;
-			}
-			else if (curr_dir == NEG_X)
-			{
-				obstacle_x_cm = rover_x_cm - current_obstacles.obstacle_transforms[i].y;
-				obstacle_y_cm = rover_y_cm + current_obstacles.obstacle_transforms[i].x;
-			}
-			else if (curr_dir == POS_Y)
-			{
-				obstacle_x_cm = rover_x_cm - current_obstacles.obstacle_transforms[i].x;
-				obstacle_y_cm = rover_y_cm + current_obstacles.obstacle_transforms[i].y;
-			}
-			else if (curr_dir == NEG_Y)
-			{
-				obstacle_x_cm = rover_x_cm + current_obstacles.obstacle_transforms[i].x;
-				obstacle_y_cm = rover_y_cm - current_obstacles.obstacle_transforms[i].y;
-			}
-
-			ESP_LOGI("OBSTACLE", "Obstacle %i: (%f, %f), (%f, %f)", i, current_obstacles.obstacle_transforms[i].x, current_obstacles.obstacle_transforms[i].y, obstacle_x_cm, obstacle_y_cm);
-
-			grid_node_t obstacle;
-
-			obstacle.x = (obstacle_x_cm + (GRID_NODE_SIZE / 2.0f)) / GRID_NODE_SIZE;
-			obstacle.y = (obstacle_y_cm + (GRID_NODE_SIZE / 2.0f)) / GRID_NODE_SIZE;
-
-			obstacle_count_map[obstacle.x][obstacle.y]++;
-			ESP_LOGI("OBSTACLEGRID", "(%d, %d), %d", obstacle.x, obstacle.y, obstacle_count_map[obstacle.x][obstacle.y]);
-
-			if (obstacle_count_map[obstacle.x][obstacle.y] == 5)
-			{
-				ESP_LOGI("ObstacleDetected", "Obstacle added to grid at (%d, %d)", obstacle.x, obstacle.y);
-				add_obstacle(&obstacle);
-				find_a_star_path(&current_rover_node, &end);
-				get_path(&current_path);
-				current_path_index = 1;
-			}
-		}
-
-		// update_rover_position(&spi_handle, &rover_pos);
+				// update_rover_position(&spi_handle, &rover_pos);
 		uint8_t next_motion = get_next_motion(&current_rover_node, &(current_path[current_path_index]), curr_dir);
+
+        // ESP_LOGI("NEXT MOTION", "next motion: %d", next_motion);
 
 		grid_node_t next_node = current_path[current_path_index];
 
@@ -249,7 +259,7 @@ void app_main(void)
 				}
 			}
 		}
-		else // MOTION ROTATE
+		else if (next_motion == MOTION_ROTATE) // MOTION ROTATE
 		{
 			update_rover_position(&spi_handle, &rover_angular_pos, POS_Y);
 			uint8_t next_direction = get_next_direction(&current_rover_node, &(current_path[current_path_index]));
