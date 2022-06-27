@@ -184,6 +184,7 @@ error:
 	}
 	free(address_info);
 	free(data->payload);
+	data->payload = NULL;
 	vTaskDelete(NULL);
 }
 
@@ -426,7 +427,13 @@ void init_WIFI(void)
 // function.
 void send_debug_backend(const char *str, u32 len)
 {
-	static tcp_task_data_t data;
+	static tcp_task_data_t data = {0};
+	// previous payload has not yet been delivered, don't send message.
+	if (data.payload != NULL)
+	{
+		return;
+	}
+
 	data.payload = malloc(sizeof(char) * (len + 2));
 	data.payload[0] = 'd';
 	data.payload[1] = ' ';
@@ -437,17 +444,24 @@ void send_debug_backend(const char *str, u32 len)
 
 // TODO: consider null terminations
 
-void send_live_update(rover_position_t* pos, uint8_t motor_speed_left, uint8_t motor_speed_right, float ultrasonic_distance, uint16_t radar)
+void send_live_update(rover_position_t *pos, uint8_t motor_speed_left, uint8_t motor_speed_right, float ultrasonic_distance, uint16_t radar)
 {
-	static tcp_task_data_t data;
+	static tcp_task_data_t data = {0};
+
+	// previous payload has not yet been delivered, don't send message.
+	if (data.payload != NULL)
+	{
+		return;
+	}
+
 	data.payload = malloc(sizeof(char) * (LIVE_POS_STRING_MAX_LEN + 2));
 	data.payload[0] = 'l';
 	data.payload[1] = ' ';
 
-    // TODO: send actual orientation
-    int16_t orientation = 45;
+	// TODO: send actual orientation
+	int16_t orientation = 45;
 
-    snprintf(&(data.payload[2]), LIVE_POS_STRING_MAX_LEN, "{\"position\": {\"x\": %d,\"y\": %d}} | {\"squal\": %u, \"motor_left\": %u, \"motor_right\": %u, \"orientation\": %d, \"ultrasonic\": %f, \"radar\": %d, \"battery\": %d}", pos->x, pos->y, pos->squal, motor_speed_left, motor_speed_right, orientation, ultrasonic_distance, radar, 0);
+	snprintf(&(data.payload[2]), LIVE_POS_STRING_MAX_LEN, "{\"position\": {\"x\": %d,\"y\": %d}} | {\"squal\": %u, \"motor_left\": %u, \"motor_right\": %u, \"orientation\": %d, \"ultrasonic\": %f, \"radar\": %d, \"battery\": %d}", pos->x, pos->y, pos->squal, motor_speed_left, motor_speed_right, orientation, ultrasonic_distance, radar, 0);
 	// memcpy(&(data.payload[2]), str, len);
 	data.len = strlen(data.payload);
 	xTaskCreate(tcp_client_task, "tcp_client", 4096, &data, 5, NULL);
@@ -455,7 +469,12 @@ void send_live_update(rover_position_t* pos, uint8_t motor_speed_left, uint8_t m
 
 void send_alien_position(rover_position_t *pos)
 {
-	static tcp_task_data_t data;
+	static tcp_task_data_t data = {0};
+	// previous payload has not yet been delivered, don't send message.
+	if (data.payload != NULL)
+	{
+		return;
+	}
 	data.payload = malloc(sizeof(char) * (LIVE_POS_STRING_MAX_LEN + 2));
 	data.payload[0] = 'a';
 	data.payload[1] = ' ';
@@ -467,7 +486,12 @@ void send_alien_position(rover_position_t *pos)
 
 void send_path(rover_position_t *start_pos, rover_position_t *end_pos)
 {
-	static tcp_task_data_t data;
+	static tcp_task_data_t data = {0};
+	// previous payload has not yet been delivered, don't send message.
+	if (data.payload != NULL)
+	{
+		return;
+	}
 	data.payload = malloc(sizeof(char) * PATH_STRING_MAX_LEN);
 	snprintf(data.payload, PATH_STRING_MAX_LEN, "{\"start\": {\"position\": {\"x\": %d,\"y\": %d}},\"end\": {\"position\": {\"x\": %d,\"y\": %d}}}", start_pos->x, start_pos->y, end_pos->x, end_pos->y);
 	data.len = strlen(data.payload);
