@@ -11,8 +11,9 @@
 #include "freertos/task.h"
 #include <stdio.h>
 #include "motor_driver.h"
+#include "../platform.h"
 
-static const char TCP_SERVER_ADDRESS[] = "192.168.0.10";
+static const char TCP_SERVER_ADDRESS[] = "192.168.0.11";
 static const char TCP_SERVER_PORT[] = "12000";
 // static const char TCP_SERVER_PORT[] = "19006";
 static const char TAG_WIFI[] = "BackendConnection";
@@ -42,6 +43,8 @@ static const char TAG_WIFI[] = "BackendConnection";
 #define KEEPALIVE_IDLE 10
 #define KEEPALIVE_INTERVAL 10
 #define KEEPALIVE_COUNT 50
+
+u8 manual_control_in_use;
 
 /* FreeRTOS event group to signal when we are connected & ready to make a request */
 static EventGroupHandle_t s_wifi_event_group;
@@ -211,6 +214,15 @@ static void server_recieve(const int sock)
 			ESP_LOGI(TAG, "Received %d bytes: %s", len, rx_buffer);
 
 			// TODO: Here we can add reactions to recieved messages.
+			if (rx_buffer[0] == 'S' || rx_buffer[0] == 'F' || rx_buffer[0] == 'B' || rx_buffer[0] == 'L' || rx_buffer[0] == 'R')
+			{
+				manual_control_in_use = MANUAL_OVERRIDE;
+			}
+
+			if (rx_buffer[0] == 'A')
+			{
+				manual_control_in_use = AUTOMATIC_CONTROL;
+			}
 
 			// Transmit back whatever the backend sent us
 			// send() can return less bytes than supplied length.
@@ -483,7 +495,7 @@ void send_debug_backend(const char *str, u32 len)
 
 // TODO: consider null terminations
 
-void send_live_update(rover_position_t* pos, uint8_t motor_speed_left, uint8_t motor_speed_right, uint8_t orientation, float ultrasonic_distance, uint16_t radar, uint8_t battery)
+void send_live_update(rover_position_t *pos, uint8_t motor_speed_left, uint8_t motor_speed_right, uint8_t orientation, float ultrasonic_distance, uint16_t radar, uint8_t battery)
 {
 	static tcp_task_data_t data = {0};
 
@@ -497,8 +509,8 @@ void send_live_update(rover_position_t* pos, uint8_t motor_speed_left, uint8_t m
 	data.payload[0] = 'l';
 	data.payload[1] = ' ';
 
-    snprintf(&(data.payload[2]), LIVE_POS_STRING_MAX_LEN, "{\"position\": {\"x\": %d,\"y\": %d}} | {\"squal\": %u, \"motor_left\": %u, \"motor_right\": %u, \"orientation\": %d, \"ultrasonic\": %f, \"radar\": %d, \"battery\": %d}", pos->x, pos->y, pos->squal, motor_speed_left, motor_speed_right, orientation, ultrasonic_distance, radar, battery);
-    data.len = strlen(data.payload);
+	snprintf(&(data.payload[2]), LIVE_POS_STRING_MAX_LEN, "{\"position\": {\"x\": %d,\"y\": %d}} | {\"squal\": %u, \"motor_left\": %u, \"motor_right\": %u, \"orientation\": %d, \"ultrasonic\": %f, \"radar\": %d, \"battery\": %d}", pos->x, pos->y, pos->squal, motor_speed_left, motor_speed_right, orientation, ultrasonic_distance, radar, battery);
+	data.len = strlen(data.payload);
 	xTaskCreate(tcp_client_task, "tcp_client", 4096, &data, 5, NULL);
 }
 
