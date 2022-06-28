@@ -13,6 +13,7 @@
 #include "motor_driver.h"
 #include "../platform.h"
 #include "pathfinding.h"
+#include "control.h"
 #include "stdlib.h"
 
 static const char TCP_SERVER_ADDRESS[] = "192.168.0.10";
@@ -52,6 +53,7 @@ extern grid_node_t end;
 extern grid_node_t current_path[MAX_PATH_LENGTH];
 extern int32_t current_path_index;
 extern uint8_t need_to_init_controller;
+extern rover_position_t rover_pos;
 
 // static initialization should set this to 0;
 // static const tcp_task_data_t{0};
@@ -223,7 +225,7 @@ static void server_recieve(const int sock)
 			rx_buffer[len] = 0; // Null-terminate whatever is received and treat it like a string
 			// ESP_LOGI(TAG, "Received %d bytes: %s", len, rx_buffer);
 
-			static grid_node_t calibrated_grid_node = {0, 0};
+			static rover_position_t calibrated_rover_pos = {0, 0};
 
 			// TODO: Here we can add reactions to recieved messages.
 			if (rx_buffer[0] == 'S' || rx_buffer[0] == 'F' || rx_buffer[0] == 'B' || rx_buffer[0] == 'L' || rx_buffer[0] == 'R')
@@ -278,15 +280,19 @@ static void server_recieve(const int sock)
 			case 'G':
 			{
 				char *end_ptr_num_1;
-				calibrated_grid_node.x = strtol(rx_buffer, &end_ptr_num_1, 10);
-				calibrated_grid_node.y = strtol(end_ptr_num_1, NULL, 10);
-				ESP_LOGI("MANUAL CONTROL", "Manually calibrated node received: (%d, %d)", calibrated_grid_node.x, calibrated_grid_node.y);
+				calibrated_rover_pos.x = strtol(&rx_buffer[2], &end_ptr_num_1, 10) * FORWARD_CNT_PER_CM;
+				calibrated_rover_pos.y = strtol(end_ptr_num_1, NULL, 10) * FORWARD_CNT_PER_CM;
+				ESP_LOGI("MANUAL CONTROL", "Manually calibrated node received: (%d, %d)", calibrated_rover_pos.x, calibrated_rover_pos.y);
 			}
 			break;
 			case 'A':
 			{
 				manual_control_in_use = AUTOMATIC_CONTROL;
 				ESP_LOGI("MANUAL CONTROL", "Return to automatic control");
+				current_rover_node.x = (calibrated_rover_pos.x / FORWARD_CNT_PER_CM) / GRID_NODE_SIZE;
+				current_rover_node.y = (calibrated_rover_pos.y / FORWARD_CNT_PER_CM) / GRID_NODE_SIZE;
+				rover_pos = calibrated_rover_pos;
+
 				find_a_star_path(&current_rover_node, &end);
 				get_path(current_path);
 				current_path_index = 1;
