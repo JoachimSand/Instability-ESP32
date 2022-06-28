@@ -262,6 +262,12 @@ static void server_recieve(const int sock)
 				motor_stop();
 				ESP_LOGI("MANUAL CONTROL", "Stop");
 			}
+            break;
+			case 'A':
+			{
+                manual_control_in_use = AUTOMATIC_CONTROL;
+				ESP_LOGI("MANUAL CONTROL", "Return to automatic control");
+			}
 			break;
 			}
 
