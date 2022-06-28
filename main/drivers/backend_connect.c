@@ -13,7 +13,7 @@
 #include "motor_driver.h"
 #include "../platform.h"
 
-static const char TCP_SERVER_ADDRESS[] = "192.168.0.11";
+static const char TCP_SERVER_ADDRESS[] = "192.168.0.10";
 static const char TCP_SERVER_PORT[] = "12000";
 // static const char TCP_SERVER_PORT[] = "19006";
 static const char TAG_WIFI[] = "BackendConnection";
@@ -47,7 +47,7 @@ static const char TAG_WIFI[] = "BackendConnection";
 u8 manual_control_in_use;
 
 // static initialization should set this to 0;
-static const tcp_task_data_t{0};
+// static const tcp_task_data_t{0};
 
 /* FreeRTOS event group to signal when we are connected & ready to make a request */
 static EventGroupHandle_t s_wifi_event_group;
@@ -214,7 +214,7 @@ static void server_recieve(const int sock)
 		else
 		{
 			rx_buffer[len] = 0; // Null-terminate whatever is received and treat it like a string
-			ESP_LOGI(TAG, "Received %d bytes: %s", len, rx_buffer);
+			// ESP_LOGI(TAG, "Received %d bytes: %s", len, rx_buffer);
 
 			// TODO: Here we can add reactions to recieved messages.
 			if (rx_buffer[0] == 'S' || rx_buffer[0] == 'F' || rx_buffer[0] == 'B' || rx_buffer[0] == 'L' || rx_buffer[0] == 'R')
@@ -234,14 +234,14 @@ static void server_recieve(const int sock)
 			{
 			case 'F':
 			{
-				ESP_LOGI("MANUAL CONTROL", "Forward");
+				// ESP_LOGI("MANUAL CONTROL", "Forward");
 				motor_move(DIR_FORWARD, 150, 0);
 			}
 			break;
 
 			case 'B':
 			{
-				ESP_LOGI("MANUAL CONTROL", "Backwards");
+				// ESP_LOGI("MANUAL CONTROL", "Backwards");
 				motor_move(DIR_BACKWARD, 150, 0);
 			}
 			break;
@@ -249,27 +249,27 @@ static void server_recieve(const int sock)
 			case 'R':
 			{
 				motor_rotate_in_place(DIR_RIGHT, 100);
-				ESP_LOGI("MANUAL CONTROL", "Right");
+				// ESP_LOGI("MANUAL CONTROL", "Right");
 			}
 			break;
 
 			case 'L':
 			{
 				motor_rotate_in_place(DIR_LEFT, 100);
-				ESP_LOGI("MANUAL CONTROL", "Left");
+				// ESP_LOGI("MANUAL CONTROL", "Left");
 			}
 			break;
 
 			case 'S':
 			{
 				motor_stop();
-				ESP_LOGI("MANUAL CONTROL", "Stop");
+				// ESP_LOGI("MANUAL CONTROL", "Stop");
 			}
 			break;
 			case 'A':
 			{
 				manual_control_in_use = AUTOMATIC_CONTROL;
-				ESP_LOGI("MANUAL CONTROL", "Return to automatic control");
+                ESP_LOGI("MANUAL CONTROL", "Return to automatic control");
 			}
 			break;
 			}
@@ -405,7 +405,7 @@ static void event_handler(void *arg, esp_event_base_t event_base,
 
 void init_WIFI(void)
 {
-	memset(&{0}, 0, sizeof(tcp_task_data_t));
+	// memset(&{0}, 0, sizeof(tcp_task_data_t));
 
 	// Initialize NVS for saving the wifi configuration between boots
 	esp_err_t ret = nvs_flash_init();
@@ -527,7 +527,7 @@ void send_live_update(rover_position_t *pos, uint8_t motor_speed_left, uint8_t m
 	xTaskCreate(tcp_client_task, "tcp_client", 4096, &data, 5, NULL);
 }
 
-void send_alien_position(rover_position_t *pos)
+void send_alien_position(rover_position_t *pos, const char* color)
 {
 	static tcp_task_data_t data = {0};
 	// previous payload has not yet been delivered, don't send message.
@@ -539,7 +539,8 @@ void send_alien_position(rover_position_t *pos)
 	data.payload = malloc(sizeof(char) * (LIVE_POS_STRING_MAX_LEN + 2));
 	data.payload[0] = 'a';
 	data.payload[1] = ' ';
-	snprintf(&(data.payload[2]), LIVE_POS_STRING_MAX_LEN, "{\"position\": {\"x\": %d,\"y\": %d}} ", pos->x, pos->y);
+    snprintf(&(data.payload[2]), LIVE_POS_STRING_MAX_LEN, "{\"position\": {\"x\": %d,\"y\": %d}, \"colour\": %s} ", pos->x, pos->y, color);
+	// snprintf(&(data.payload[2]), LIVE_POS_STRING_MAX_LEN, "{\"position\": {\"x\": %d,\"y\": %d}} ", pos->x, pos->y);
 	// memcpy(&(data.payload[2]), str, len);
 	data.len = strlen(data.payload);
 	xTaskCreate(tcp_client_task, "tcp_client", 4096, &data, 5, NULL);

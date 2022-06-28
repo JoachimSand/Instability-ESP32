@@ -237,6 +237,7 @@ uint8_t get_next_direction(grid_node_t* curr, grid_node_t* next)
 uint8_t get_next_motion(grid_node_t* curr, grid_node_t* next, uint8_t curr_dir)
 {
     if (next->x == -1 && next->y == -1) return PATH_FINISHED;
+    if (next->x == curr->x && next->y == curr->y) return PATH_FINISHED;
 
     uint8_t next_direction = get_next_direction(curr, next); 
 
@@ -262,6 +263,18 @@ uint8_t get_rotation_type(uint8_t curr_dir, uint8_t next_dir)
     return NO_ROTATION;
 }
 
+uint8_t get_next_search_pattern_goal(grid_node_t* end)
+{
+    static uint8_t search_pattern_index = 0;
+
+    if (search_pattern_index == 0) { end->x = 5; end->y = 0; search_pattern_index++; return 1;}
+    if (search_pattern_index == 1) { end->x = 0; end->y = 1; search_pattern_index++; return 1;}
+    if (search_pattern_index == 2) { end->x = 5; end->y = 2; search_pattern_index++; return 1;}
+    if (search_pattern_index == 3) { end->x = 0; end->y = 3; search_pattern_index++; return 1;}
+    if (search_pattern_index == 4) { end->x = 0; end->y = 0; search_pattern_index++; return 1;}
+    
+    return 0;
+}
 
 
 

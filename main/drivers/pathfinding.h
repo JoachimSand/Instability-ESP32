@@ -26,6 +26,8 @@
 #define ROTATION_90_RIGHT 2
 #define ROTATION_180 3
 
+#define GRID_NODE_SIZE 60
+
 typedef struct grid_node
 {
     int32_t x;
@@ -63,5 +65,7 @@ uint8_t get_next_direction(grid_node_t* curr, grid_node_t* next);
 uint8_t get_next_motion(grid_node_t* curr, grid_node_t* next, uint8_t curr_dir);
 
 uint8_t get_rotation_type(uint8_t curr_dir, uint8_t next_dir);
+
+uint8_t get_next_search_pattern_goal(grid_node_t* end);
 
 #endif

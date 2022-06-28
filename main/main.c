@@ -20,7 +20,8 @@
 #include "rom/ets_sys.h"
 
 #include "platform.h"
-#include "drivers/motor_driver.h" #include "drivers/optical_flow_sensor.h"
+#include "drivers/motor_driver.h" 
+#include "drivers/optical_flow_sensor.h"
 #include "drivers/fpga_connect.h"
 #include "drivers/backend_connect.h"
 #include "drivers/control.h"
@@ -29,89 +30,17 @@
 
 #define SEND_LIVE_UPDATE_RATE 50
 
-#define GRID_NODE_SIZE 60
 
 #define MAX_FORWARD_VEL 150
 #define MAX_ROTATION_VEL 150
 #define MAX_MOTOR_DELTA 15
 
-#define VISION_ITERATIONS 10
-
 extern u8 manual_control_in_use;
-
-void update_vision(spi_device_handle_t *spi_handle_fpga, obstacle_collection_t *current_obstacles, alien_collection_t *current_aliens, uint8_t curr_dir,
-				   rover_position_t *rover_pos, uint16_t obstacle_count_map[][GRID_SIZE_Y], grid_node_t *current_rover_node, grid_node_t *end, grid_node_t current_path[], int32_t *current_path_index, uint8_t *need_to_init_controller)
-{
-	ESP_LOGI("VISION", "Starting update vision");
-	for (int32_t i = 0; i < VISION_ITERATIONS; i++)
-	{
-		get_vision_data(spi_handle_fpga, current_aliens, current_obstacles);
-
-		for (i32 i = 0; i < current_obstacles->objects_found; i++)
-		{
-			// Add each detected obstacle to the A star grid
-			f32 rover_x_cm, rover_y_cm;
-			rover_x_cm = rover_pos->x / (f32)FORWARD_CNT_PER_CM;
-			rover_y_cm = rover_pos->y / (f32)FORWARD_CNT_PER_CM;
-
-			// ESP_LOGI("ObstacleCM", "(%f, %f) (%d, %d)", rover_x_cm, rover_y_cm, rover_po->.x, rover_pos.y);
-
-			f32 obstacle_x_cm = 1, obstacle_y_cm = 1;
-
-			if (curr_dir == POS_X)
-			{
-				obstacle_x_cm = rover_x_cm + current_obstacles->obstacle_transforms[i].y;
-				obstacle_y_cm = rover_y_cm - current_obstacles->obstacle_transforms[i].x;
-			}
-			else if (curr_dir == NEG_X)
-			{
-				obstacle_x_cm = rover_x_cm - current_obstacles->obstacle_transforms[i].y;
-				obstacle_y_cm = rover_y_cm + current_obstacles->obstacle_transforms[i].x;
-			}
-			else if (curr_dir == POS_Y)
-			{
-				obstacle_x_cm = rover_x_cm - current_obstacles->obstacle_transforms[i].x;
-				obstacle_y_cm = rover_y_cm + current_obstacles->obstacle_transforms[i].y;
-			}
-			else if (curr_dir == NEG_Y)
-			{
-				obstacle_x_cm = rover_x_cm + current_obstacles->obstacle_transforms[i].x;
-				obstacle_y_cm = rover_y_cm - current_obstacles->obstacle_transforms[i].y;
-			}
-
-			ESP_LOGI("OBSTACLE", "Obstacle %i: (%f, %f), (%f, %f)", i, current_obstacles->obstacle_transforms[i].x, current_obstacles->obstacle_transforms[i].y, obstacle_x_cm, obstacle_y_cm);
-
-			grid_node_t obstacle;
-
-			obstacle.x = (obstacle_x_cm + (GRID_NODE_SIZE / 2.0f)) / GRID_NODE_SIZE;
-			obstacle.y = (obstacle_y_cm + (GRID_NODE_SIZE / 2.0f)) / GRID_NODE_SIZE;
-
-			obstacle_count_map[obstacle.x][obstacle.y]++;
-			ESP_LOGI("OBSTACLEGRID", "(%d, %d), %d", obstacle.x, obstacle.y, obstacle_count_map[obstacle.x][obstacle.y]);
-
-			if (obstacle_count_map[obstacle.x][obstacle.y] == 5)
-			{
-				ESP_LOGI("ObstacleDetected", "Obstacle added to grid at (%d, %d)", obstacle.x, obstacle.y);
-				add_obstacle(&obstacle);
-				find_a_star_path(current_rover_node, end);
-				get_path(current_path);
-				*current_path_index = 1;
-				*need_to_init_controller = 1;
-
-				rover_position_t obstacle_pos;
-				obstacle_pos.x = obstacle_x_cm * FORWARD_CNT_PER_CM;
-				obstacle_pos.y = obstacle_y_cm * FORWARD_CNT_PER_CM;
-				send_obstacle_position(&obstacle_pos);
-			}
-		}
-	}
-	ESP_LOGI("VISION", "Finished update vision");
-}
 
 void app_main(void)
 {
 	// WIFI stuffs
-	init_WIFI();
+    init_WIFI();
 	uint8_t mac_addr_buffer[6] = {0};
 	esp_read_mac(mac_addr_buffer, ESP_MAC_WIFI_STA);
 	ESP_LOGI("WIFI MAC", "Wifi MAC address is: %2x:%2x:%2x:%2x:%2x:%2x", mac_addr_buffer[0], mac_addr_buffer[1], mac_addr_buffer[2], mac_addr_buffer[3], mac_addr_buffer[4], mac_addr_buffer[5]);
@@ -154,26 +83,14 @@ void app_main(void)
 	current_rover_node.x = 0;
 	current_rover_node.y = 0;
 
-	// TEST A* algo
-	grid_node_t start;
-	start.x = 0;
-	start.y = 0;
-
 	grid_node_t end;
-	end.x = 5;
-	end.y = 0;
+	// end.x = 5;
+	// end.y = 0;
+    get_next_search_pattern_goal(&end);
 
 	init_obstacle_map();
-	// grid_node_t new_obstacle;
-	// new_obstacle.x = 3;
-	// new_obstacle.y = 3;
-	// add_obstacle(&new_obstacle);
-	// new_obstacle.y = 19;
-	// add_obstacle(&new_obstacle);
-	// new_obstacle.y = 21;
-	// add_obstacle(&new_obstacle);
 
-	uint8_t has_found_path = find_a_star_path(&start, &end);
+	uint8_t has_found_path = find_a_star_path(&current_rover_node, &end);
 	ESP_LOGI(TAG, "Has found path: %d", has_found_path);
 	get_path(&current_path);
 	// TODO: fix get path function crash
@@ -188,20 +105,30 @@ void app_main(void)
 
 	uint8_t need_to_init_controller = 1;
 
-	u16 obstacle_count_map[GRID_SIZE_X][GRID_SIZE_Y];
+	u16 alien_count_map[ALIEN_COLORS][GRID_SIZE_X][GRID_SIZE_Y];
+	memset(&alien_count_map, 0, sizeof(u16) * ALIEN_COLORS * GRID_SIZE_X * GRID_SIZE_Y);
 
+	u16 obstacle_count_map[GRID_SIZE_X][GRID_SIZE_Y];
 	memset(&obstacle_count_map, 0, sizeof(u16) * GRID_SIZE_X * GRID_SIZE_Y);
 
 	obstacle_collection_t current_obstacles = {0};
 	alien_collection_t current_aliens = {0};
 
+    // wait for initial manual start
+    while (manual_control_in_use != MANUAL_OVERRIDE)
+    {
+        vTaskDelay(100 / portTICK_PERIOD_MS);
+    }
+
 	// Vision before first movement
-	update_vision(&spi_handle_fpga, &current_obstacles, &current_aliens, curr_dir, &rover_pos, obstacle_count_map, &current_rover_node, &end, current_path, &current_path_index, &need_to_init_controller);
+	update_vision(&spi_handle_fpga, &current_obstacles, &current_aliens, curr_dir, &rover_pos, obstacle_count_map, alien_count_map, &current_rover_node, &end, current_path, &current_path_index, &need_to_init_controller);
 
 	while (1)
 	{
+        rover_position_t throway_pos;
         if (manual_control_in_use == MANUAL_OVERRIDE) 
         {
+            update_rover_position(&spi_handle, &throway_pos, POS_X);
             vTaskDelay(10 / portTICK_PERIOD_MS);
             continue;
         }
@@ -218,9 +145,12 @@ void app_main(void)
 		if (next_motion == PATH_FINISHED)
 		{
 			ESP_LOGI("PATH FOLLOWING", "Finished path...");
-			while (1)
-			{
-			}
+            get_next_search_pattern_goal(&end);
+            find_a_star_path(&current_rover_node, &end);
+            get_path(current_path);
+            current_path_index = 1;
+            need_to_init_controller = 1;
+
 		}
 		else if (next_motion == MOTION_FORWARD)
 		{
@@ -264,7 +194,7 @@ void app_main(void)
 
 				need_to_init_controller = 1;
 				motor_stop();
-				update_vision(&spi_handle_fpga, &current_obstacles, &current_aliens, curr_dir, &rover_pos, obstacle_count_map, &current_rover_node, &end, current_path, &current_path_index, &need_to_init_controller);
+                update_vision(&spi_handle_fpga, &current_obstacles, &current_aliens, curr_dir, &rover_pos, obstacle_count_map, alien_count_map, &current_rover_node, &end, current_path, &current_path_index, &need_to_init_controller);
 			}
 			else
 			{
@@ -330,7 +260,7 @@ void app_main(void)
 				rover_angular_pos.y = 0;
 				curr_dir = next_direction;
 				need_to_init_controller = 1;
-				update_vision(&spi_handle_fpga, &current_obstacles, &current_aliens, curr_dir, &rover_pos, obstacle_count_map, &current_rover_node, &end, current_path, &current_path_index, &need_to_init_controller);
+                update_vision(&spi_handle_fpga, &current_obstacles, &current_aliens, curr_dir, &rover_pos, obstacle_count_map, alien_count_map, &current_rover_node, &end, current_path, &current_path_index, &need_to_init_controller);
 				vTaskDelay(1000 / portTICK_PERIOD_MS);
 			}
 			else

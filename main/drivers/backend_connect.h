@@ -25,7 +25,7 @@ void send_live_update(rover_position_t *pos, uint8_t motor_speed_left, uint8_t m
 
 void send_obstacle_position(rover_position_t *pos);
 
-void send_alien_position(rover_position_t *pos);
+void send_alien_position(rover_position_t *pos, const char* color);
 
 void send_path(rover_position_t *start_pos, rover_position_t *end_pos);
 

@@ -5,6 +5,10 @@
 #include "driver/spi_master.h"
 #include "driver/gpio.h"
 
+#include "control.h"
+#include "pathfinding.h"
+#include "backend_connect.h"
+
 // use the SPI2 controller for the optical flow sensor.
 // note that there is only one other SPI
 #define FPGA_HOST SPI3_HOST
@@ -25,6 +29,19 @@ static const char FPGA_TAG[] = "FpgaConnection";
 #define MAX_COL_DERIVATES MAX_COLS - 2
 #define MAX_COL_SECOND_DERIVATES MAX_COLS - 3
 #define MAX_OBJ_COUNT 5
+
+#define RED     "\"red\""
+#define BLUE    "\"blue\""
+#define PINK    "\"pink\""
+#define YELLOW  "\"yellow\""
+#define GREEN   "\"green\""
+#define TEAL    "\"teal\""
+
+#define VISION_ITERATIONS 10
+
+#define OBSTACLE_ADD_THRESHOLD 5
+#define ALIEN_ADD_THRESHOLD 6
+#define ALIEN_COLORS 6
 
 typedef enum spi_state
 {
@@ -106,5 +123,8 @@ typedef struct obstacle_collection
 void init_fpga_connection(spi_device_handle_t *spi_handle);
 void get_vision_data(spi_device_handle_t *spi_handle, alien_collection_t *aliens, obstacle_collection_t *obstacles);
 void print_raw_vision_data(spi_device_handle_t *spi_handle);
+
+void update_vision(spi_device_handle_t *spi_handle_fpga, obstacle_collection_t *current_obstacles, alien_collection_t *current_aliens, uint8_t curr_dir,
+				   rover_position_t *rover_pos, uint16_t obstacle_count_map[][GRID_SIZE_Y], uint16_t alien_count_map[][GRID_SIZE_X][GRID_SIZE_Y],grid_node_t *current_rover_node, grid_node_t *end, grid_node_t current_path[], int32_t *current_path_index, uint8_t *need_to_init_controller);
 
 #endif
