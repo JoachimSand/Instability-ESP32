@@ -46,6 +46,9 @@ static const char TAG_WIFI[] = "BackendConnection";
 
 u8 manual_control_in_use;
 
+// static initialization should set this to 0;
+static const tcp_task_data_t empty_task_data;
+
 /* FreeRTOS event group to signal when we are connected & ready to make a request */
 static EventGroupHandle_t s_wifi_event_group;
 static i32 s_retry_num = 0;
@@ -396,6 +399,8 @@ static void event_handler(void *arg, esp_event_base_t event_base,
 
 void init_WIFI(void)
 {
+	memset(&empty_task_data, 0, sizeof(tcp_task_data_t));
+
 	// Initialize NVS for saving the wifi configuration between boots
 	esp_err_t ret = nvs_flash_init();
 
@@ -478,7 +483,7 @@ void init_WIFI(void)
 // function.
 void send_debug_backend(const char *str, u32 len)
 {
-	static tcp_task_data_t data = {0};
+	static tcp_task_data_t data = empty_task_data;
 	// previous payload has not yet been delivered, don't send message.
 	if (data.payload != NULL)
 	{
@@ -497,7 +502,7 @@ void send_debug_backend(const char *str, u32 len)
 
 void send_live_update(rover_position_t *pos, uint8_t motor_speed_left, uint8_t motor_speed_right, uint8_t orientation, float ultrasonic_distance, uint16_t radar, uint8_t battery)
 {
-	static tcp_task_data_t data = {0};
+	static tcp_task_data_t data = empty_task_data;
 
 	// previous payload has not yet been delivered, don't send message.
 	if (data.payload != NULL)
@@ -516,7 +521,7 @@ void send_live_update(rover_position_t *pos, uint8_t motor_speed_left, uint8_t m
 
 void send_alien_position(rover_position_t *pos)
 {
-	static tcp_task_data_t data = {0};
+	static tcp_task_data_t data = empty_task_data;
 	// previous payload has not yet been delivered, don't send message.
 	if (data.payload != NULL)
 	{
@@ -533,7 +538,12 @@ void send_alien_position(rover_position_t *pos)
 
 void send_obstacle_position(rover_position_t *pos)
 {
-	static tcp_task_data_t data;
+	static tcp_task_data_t data = empty_task_data;
+	if (data.payload != NULL)
+	{
+		return;
+	}
+
 	data.payload = malloc(sizeof(char) * (LIVE_POS_STRING_MAX_LEN + 2));
 	data.payload[0] = 'o';
 	data.payload[1] = ' ';
@@ -545,7 +555,7 @@ void send_obstacle_position(rover_position_t *pos)
 
 void send_path(rover_position_t *start_pos, rover_position_t *end_pos)
 {
-	static tcp_task_data_t data = {0};
+	static tcp_task_data_t data = empty_task_data;
 	// previous payload has not yet been delivered, don't send message.
 	if (data.payload != NULL)
 	{
