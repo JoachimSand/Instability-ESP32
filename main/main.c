@@ -200,6 +200,11 @@ void app_main(void)
 
 	while (1)
 	{
+        if (manual_control_in_use == MANUAL_OVERRIDE) 
+        {
+            vTaskDelay(10 / portTICK_PERIOD_MS);
+            continue;
+        }
 		// Get data from FPGA
 
 		// update_vision(&spi_handle_fpga, &current_obstacles, &current_aliens, curr_dir, &rover_pos, obstacle_count_map, &current_rover_node, &end, current_path, &current_path_index, &need_to_init_controller);
