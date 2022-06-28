@@ -47,7 +47,7 @@ static const char TAG_WIFI[] = "BackendConnection";
 u8 manual_control_in_use;
 
 // static initialization should set this to 0;
-static const tcp_task_data_t empty_task_data;
+static const tcp_task_data_t{0};
 
 /* FreeRTOS event group to signal when we are connected & ready to make a request */
 static EventGroupHandle_t s_wifi_event_group;
@@ -265,10 +265,10 @@ static void server_recieve(const int sock)
 				motor_stop();
 				ESP_LOGI("MANUAL CONTROL", "Stop");
 			}
-            break;
+			break;
 			case 'A':
 			{
-                manual_control_in_use = AUTOMATIC_CONTROL;
+				manual_control_in_use = AUTOMATIC_CONTROL;
 				ESP_LOGI("MANUAL CONTROL", "Return to automatic control");
 			}
 			break;
@@ -405,7 +405,7 @@ static void event_handler(void *arg, esp_event_base_t event_base,
 
 void init_WIFI(void)
 {
-	memset(&empty_task_data, 0, sizeof(tcp_task_data_t));
+	memset(&{0}, 0, sizeof(tcp_task_data_t));
 
 	// Initialize NVS for saving the wifi configuration between boots
 	esp_err_t ret = nvs_flash_init();
@@ -489,10 +489,11 @@ void init_WIFI(void)
 // function.
 void send_debug_backend(const char *str, u32 len)
 {
-	static tcp_task_data_t data = empty_task_data;
+	static tcp_task_data_t data = {0};
 	// previous payload has not yet been delivered, don't send message.
 	if (data.payload != NULL)
 	{
+		ESP_LOGI("BackendConnect", "Not sending requested data, previous request not terminated");
 		return;
 	}
 
@@ -508,11 +509,12 @@ void send_debug_backend(const char *str, u32 len)
 
 void send_live_update(rover_position_t *pos, uint8_t motor_speed_left, uint8_t motor_speed_right, uint8_t orientation, float ultrasonic_distance, uint16_t radar, uint8_t battery)
 {
-	static tcp_task_data_t data = empty_task_data;
+	static tcp_task_data_t data = {0};
 
 	// previous payload has not yet been delivered, don't send message.
 	if (data.payload != NULL)
 	{
+		ESP_LOGI("BackendConnect", "Not sending requested data, previous request not terminated");
 		return;
 	}
 
@@ -527,10 +529,11 @@ void send_live_update(rover_position_t *pos, uint8_t motor_speed_left, uint8_t m
 
 void send_alien_position(rover_position_t *pos)
 {
-	static tcp_task_data_t data = empty_task_data;
+	static tcp_task_data_t data = {0};
 	// previous payload has not yet been delivered, don't send message.
 	if (data.payload != NULL)
 	{
+		ESP_LOGI("BackendConnect", "Not sending requested data, previous request not terminated");
 		return;
 	}
 	data.payload = malloc(sizeof(char) * (LIVE_POS_STRING_MAX_LEN + 2));
@@ -544,9 +547,10 @@ void send_alien_position(rover_position_t *pos)
 
 void send_obstacle_position(rover_position_t *pos)
 {
-	static tcp_task_data_t data = empty_task_data;
+	static tcp_task_data_t data = {0};
 	if (data.payload != NULL)
 	{
+		ESP_LOGI("BackendConnect", "Not sending requested data, previous request not terminated");
 		return;
 	}
 
@@ -561,10 +565,11 @@ void send_obstacle_position(rover_position_t *pos)
 
 void send_path(rover_position_t *start_pos, rover_position_t *end_pos)
 {
-	static tcp_task_data_t data = empty_task_data;
+	static tcp_task_data_t data = {0};
 	// previous payload has not yet been delivered, don't send message.
 	if (data.payload != NULL)
 	{
+		ESP_LOGI("BackendConnect", "Not sending requested data, previous request not terminated");
 		return;
 	}
 	data.payload = malloc(sizeof(char) * PATH_STRING_MAX_LEN);
