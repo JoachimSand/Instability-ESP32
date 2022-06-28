@@ -20,7 +20,7 @@
 #include "rom/ets_sys.h"
 
 #include "platform.h"
-#include "drivers/motor_driver.h" 
+#include "drivers/motor_driver.h"
 #include "drivers/optical_flow_sensor.h"
 #include "drivers/fpga_connect.h"
 #include "drivers/backend_connect.h"
@@ -30,17 +30,22 @@
 
 #define SEND_LIVE_UPDATE_RATE 50
 
-
 #define MAX_FORWARD_VEL 150
 #define MAX_ROTATION_VEL 150
 #define MAX_MOTOR_DELTA 15
 
 extern u8 manual_control_in_use;
+grid_node_t current_rover_node;
+rover_position_t rover_pos;
+grid_node_t end;
+grid_node_t current_path[MAX_PATH_LENGTH];
+int32_t current_path_index = 1;
+uint8_t need_to_init_controller = 1;
 
 void app_main(void)
 {
 	// WIFI stuffs
-    init_WIFI();
+	init_WIFI();
 	uint8_t mac_addr_buffer[6] = {0};
 	esp_read_mac(mac_addr_buffer, ESP_MAC_WIFI_STA);
 	ESP_LOGI("WIFI MAC", "Wifi MAC address is: %2x:%2x:%2x:%2x:%2x:%2x", mac_addr_buffer[0], mac_addr_buffer[1], mac_addr_buffer[2], mac_addr_buffer[3], mac_addr_buffer[4], mac_addr_buffer[5]);
@@ -55,7 +60,6 @@ void app_main(void)
 
 	motor_stop();
 
-	rover_position_t rover_pos;
 	// rover_pos.x = 3 * GRID_NODE_SIZE * FORWARD_CNT_PER_CM;
 	// rover_pos.y = 2 * GRID_NODE_SIZE * FORWARD_CNT_PER_CM;
 	rover_pos.x = 0;
@@ -72,21 +76,19 @@ void app_main(void)
 	controller_t controller_rotate;
 
 	// Create path array and clear it
-	grid_node_t current_path[MAX_PATH_LENGTH];
+
 	for (int i = 0; i < MAX_PATH_LENGTH; i++)
 	{
 		current_path[i].x = -1;
 		current_path[i].y = -1;
 	}
 
-	grid_node_t current_rover_node;
 	current_rover_node.x = 0;
 	current_rover_node.y = 0;
 
-	grid_node_t end;
 	// end.x = 5;
 	// end.y = 0;
-    get_next_search_pattern_goal(&end);
+	get_next_search_pattern_goal(&end);
 
 	init_obstacle_map();
 
@@ -99,11 +101,11 @@ void app_main(void)
 
 	uint16_t ticks_since_last_live_pos = 0;
 
-	int32_t current_path_index = 1;
+	current_path_index = 1;
 
 	uint8_t curr_dir = POS_X;
 
-	uint8_t need_to_init_controller = 1;
+	need_to_init_controller = 1;
 
 	u16 alien_count_map[ALIEN_COLORS][GRID_SIZE_X][GRID_SIZE_Y];
 	memset(&alien_count_map, 0, sizeof(u16) * ALIEN_COLORS * GRID_SIZE_X * GRID_SIZE_Y);
@@ -114,24 +116,24 @@ void app_main(void)
 	obstacle_collection_t current_obstacles = {0};
 	alien_collection_t current_aliens = {0};
 
-    // wait for initial manual start
-    while (manual_control_in_use != MANUAL_OVERRIDE)
-    {
-        vTaskDelay(100 / portTICK_PERIOD_MS);
-    }
+	// wait for initial manual start
+	while (manual_control_in_use != MANUAL_OVERRIDE)
+	{
+		vTaskDelay(100 / portTICK_PERIOD_MS);
+	}
 
 	// Vision before first movement
 	update_vision(&spi_handle_fpga, &current_obstacles, &current_aliens, curr_dir, &rover_pos, obstacle_count_map, alien_count_map, &current_rover_node, &end, current_path, &current_path_index, &need_to_init_controller);
 
 	while (1)
 	{
-        rover_position_t throway_pos;
-        if (manual_control_in_use == MANUAL_OVERRIDE) 
-        {
-            update_rover_position(&spi_handle, &throway_pos, POS_X);
-            vTaskDelay(10 / portTICK_PERIOD_MS);
-            continue;
-        }
+		rover_position_t throway_pos;
+		if (manual_control_in_use == MANUAL_OVERRIDE)
+		{
+			update_rover_position(&spi_handle, &throway_pos, POS_X);
+			vTaskDelay(10 / portTICK_PERIOD_MS);
+			continue;
+		}
 		// Get data from FPGA
 
 		// update_vision(&spi_handle_fpga, &current_obstacles, &current_aliens, curr_dir, &rover_pos, obstacle_count_map, &current_rover_node, &end, current_path, &current_path_index, &need_to_init_controller);
@@ -145,12 +147,11 @@ void app_main(void)
 		if (next_motion == PATH_FINISHED)
 		{
 			ESP_LOGI("PATH FOLLOWING", "Finished path...");
-            get_next_search_pattern_goal(&end);
-            find_a_star_path(&current_rover_node, &end);
-            get_path(current_path);
-            current_path_index = 1;
-            need_to_init_controller = 1;
-
+			get_next_search_pattern_goal(&end);
+			find_a_star_path(&current_rover_node, &end);
+			get_path(current_path);
+			current_path_index = 1;
+			need_to_init_controller = 1;
 		}
 		else if (next_motion == MOTION_FORWARD)
 		{
@@ -194,7 +195,7 @@ void app_main(void)
 
 				need_to_init_controller = 1;
 				motor_stop();
-                update_vision(&spi_handle_fpga, &current_obstacles, &current_aliens, curr_dir, &rover_pos, obstacle_count_map, alien_count_map, &current_rover_node, &end, current_path, &current_path_index, &need_to_init_controller);
+				update_vision(&spi_handle_fpga, &current_obstacles, &current_aliens, curr_dir, &rover_pos, obstacle_count_map, alien_count_map, &current_rover_node, &end, current_path, &current_path_index, &need_to_init_controller);
 			}
 			else
 			{
@@ -260,7 +261,7 @@ void app_main(void)
 				rover_angular_pos.y = 0;
 				curr_dir = next_direction;
 				need_to_init_controller = 1;
-                update_vision(&spi_handle_fpga, &current_obstacles, &current_aliens, curr_dir, &rover_pos, obstacle_count_map, alien_count_map, &current_rover_node, &end, current_path, &current_path_index, &need_to_init_controller);
+				update_vision(&spi_handle_fpga, &current_obstacles, &current_aliens, curr_dir, &rover_pos, obstacle_count_map, alien_count_map, &current_rover_node, &end, current_path, &current_path_index, &need_to_init_controller);
 				vTaskDelay(1000 / portTICK_PERIOD_MS);
 			}
 			else

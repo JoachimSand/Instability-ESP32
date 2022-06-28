@@ -12,6 +12,8 @@
 #include <stdio.h>
 #include "motor_driver.h"
 #include "../platform.h"
+#include "pathfinding.h"
+#include "stdlib.h"
 
 static const char TCP_SERVER_ADDRESS[] = "192.168.0.10";
 static const char TCP_SERVER_PORT[] = "12000";
@@ -45,6 +47,11 @@ static const char TAG_WIFI[] = "BackendConnection";
 #define KEEPALIVE_COUNT 50
 
 u8 manual_control_in_use;
+extern grid_node_t current_rover_node;
+extern grid_node_t end;
+extern grid_node_t current_path[MAX_PATH_LENGTH];
+extern int32_t current_path_index;
+extern uint8_t need_to_init_controller;
 
 // static initialization should set this to 0;
 // static const tcp_task_data_t{0};
@@ -216,6 +223,8 @@ static void server_recieve(const int sock)
 			rx_buffer[len] = 0; // Null-terminate whatever is received and treat it like a string
 			// ESP_LOGI(TAG, "Received %d bytes: %s", len, rx_buffer);
 
+			static grid_node_t calibrated_grid_node = {0, 0};
+
 			// TODO: Here we can add reactions to recieved messages.
 			if (rx_buffer[0] == 'S' || rx_buffer[0] == 'F' || rx_buffer[0] == 'B' || rx_buffer[0] == 'L' || rx_buffer[0] == 'R')
 			{
@@ -266,10 +275,22 @@ static void server_recieve(const int sock)
 				// ESP_LOGI("MANUAL CONTROL", "Stop");
 			}
 			break;
+			case 'G':
+			{
+				char *end_ptr_num_1;
+				calibrated_grid_node.x = strtol(rx_buffer, &end_ptr_num_1, 10);
+				calibrated_grid_node.y = strtol(end_ptr_num_1, NULL, 10);
+				ESP_LOGI("MANUAL CONTROL", "Manually calibrated node received: (%d, %d)", calibrated_grid_node.x, calibrated_grid_node.y);
+			}
+			break;
 			case 'A':
 			{
 				manual_control_in_use = AUTOMATIC_CONTROL;
-                ESP_LOGI("MANUAL CONTROL", "Return to automatic control");
+				ESP_LOGI("MANUAL CONTROL", "Return to automatic control");
+				find_a_star_path(&current_rover_node, &end);
+				get_path(current_path);
+				current_path_index = 1;
+				need_to_init_controller = 1;
 			}
 			break;
 			}
@@ -527,7 +548,7 @@ void send_live_update(rover_position_t *pos, uint8_t motor_speed_left, uint8_t m
 	xTaskCreate(tcp_client_task, "tcp_client", 4096, &data, 5, NULL);
 }
 
-void send_alien_position(rover_position_t *pos, const char* color)
+void send_alien_position(rover_position_t *pos, const char *color)
 {
 	static tcp_task_data_t data = {0};
 	// previous payload has not yet been delivered, don't send message.
@@ -539,7 +560,7 @@ void send_alien_position(rover_position_t *pos, const char* color)
 	data.payload = malloc(sizeof(char) * (LIVE_POS_STRING_MAX_LEN + 2));
 	data.payload[0] = 'a';
 	data.payload[1] = ' ';
-    snprintf(&(data.payload[2]), LIVE_POS_STRING_MAX_LEN, "{\"position\": {\"x\": %d,\"y\": %d}, \"colour\": %s} ", pos->x, pos->y, color);
+	snprintf(&(data.payload[2]), LIVE_POS_STRING_MAX_LEN, "{\"position\": {\"x\": %d,\"y\": %d}, \"colour\": %s} ", pos->x, pos->y, color);
 	// snprintf(&(data.payload[2]), LIVE_POS_STRING_MAX_LEN, "{\"position\": {\"x\": %d,\"y\": %d}} ", pos->x, pos->y);
 	// memcpy(&(data.payload[2]), str, len);
 	data.len = strlen(data.payload);
