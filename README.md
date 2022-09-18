@@ -8,10 +8,10 @@ The [**drivers**](main/drivers/) directory contains all the code utilised to mai
 ### Building
 The project utilises the [Espressif IoT Development Framework](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/get-started/index.html) which is heavily based of FreeRTOS.
 
-The project can be built with `idf.py -p PORT [-b BAUD] build` in the top-level directory.
-Flash the ESP32 module: `idf.py -p PORT [-b BAUD] flash`
-Debug console: `idf.py -p PORT [-b BAUD] monitor`
-or as a one-liner: `idf.py -p PORT [-b BAUD] build flash monitor`
+The project can be built with `idf.py -p PORT [-b BAUD] build` in the top-level directory.  
+Flash the ESP32 module: `idf.py -p PORT [-b BAUD] flash`  
+Debug console: `idf.py -p PORT [-b BAUD] monitor`  
+or as a one-liner: `idf.py -p PORT [-b BAUD] build flash monitor`  
 
 ### Credits
 - [Joachim Sand](https://github.com/JoachimSand)
